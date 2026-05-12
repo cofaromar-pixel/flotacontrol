@@ -1,0 +1,1723 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FlotaControl — Gestión de Flota Vehicular</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.x/dist/tabler-icons.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --bg2: #111118;
+    --bg3: #1a1a24;
+    --bg4: #22222e;
+    --border: rgba(255,255,255,0.08);
+    --border2: rgba(255,255,255,0.14);
+    --text: #f0f0f8;
+    --text2: #9090a8;
+    --text3: #5a5a72;
+    --accent: #00ff87;
+    --accent2: #00cc6a;
+    --accent-dim: rgba(0,255,135,0.1);
+    --accent-glow: 0 0 20px rgba(0,255,135,0.3);
+    --warn: #ffb347;
+    --warn-dim: rgba(255,179,71,0.12);
+    --danger: #ff5555;
+    --danger-dim: rgba(255,85,85,0.12);
+    --info: #5599ff;
+    --info-dim: rgba(85,153,255,0.12);
+    --purple: #b088ff;
+    --purple-dim: rgba(176,136,255,0.12);
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'Syne', sans-serif;
+    --radius: 10px;
+    --radius-lg: 16px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { font-family: var(--sans); background: var(--bg); color: var(--text); font-size: 14px; }
+  body { min-height: 100vh; overflow-x: hidden; }
+
+  /* --- SCANLINE OVERLAY --- */
+  body::before {
+    content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 9999;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px);
+  }
+
+  /* --- HEADER --- */
+  header {
+    display: flex; align-items: center; gap: 16px;
+    padding: 16px 24px; border-bottom: 1px solid var(--border);
+    background: var(--bg2); position: sticky; top: 0; z-index: 100;
+    backdrop-filter: blur(12px);
+  }
+  .logo { display: flex; align-items: center; gap: 10px; }
+  .logo-mark {
+    width: 36px; height: 36px; border-radius: 8px;
+    background: var(--accent); display: flex; align-items: center; justify-content: center;
+    box-shadow: var(--accent-glow);
+  }
+  .logo-mark i { color: #000; font-size: 20px; }
+  .logo-text { font-size: 18px; font-weight: 800; letter-spacing: -0.5px; }
+  .logo-text span { color: var(--accent); }
+  header nav { margin-left: auto; display: flex; gap: 4px; }
+  header nav button {
+    padding: 7px 14px; border-radius: 8px; border: 1px solid var(--border);
+    background: transparent; color: var(--text2); cursor: pointer; font-family: var(--sans);
+    font-size: 13px; font-weight: 500; display: flex; align-items: center; gap: 6px;
+    transition: all 0.15s;
+  }
+  header nav button:hover { background: var(--bg3); color: var(--text); border-color: var(--border2); }
+  header nav button.active { background: var(--accent-dim); color: var(--accent); border-color: var(--accent); }
+  header nav button i { font-size: 16px; }
+
+  /* --- ALERT BANNER --- */
+  #alertBanner {
+    display: none; padding: 10px 24px; background: var(--danger-dim);
+    border-bottom: 1px solid rgba(255,85,85,0.3);
+    color: var(--danger); font-size: 13px; font-weight: 500;
+    align-items: center; gap: 8px;
+  }
+  #alertBanner.show { display: flex; }
+
+  /* --- MAIN --- */
+  main { padding: 24px; max-width: 1400px; margin: 0 auto; }
+
+  /* --- SECTION TITLE --- */
+  .section-title {
+    font-size: 22px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 20px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .section-title span { color: var(--accent); }
+
+  /* --- KM HERO CARD --- */
+  .km-hero {
+    background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius-lg);
+    padding: 24px; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px;
+    margin-bottom: 24px;
+  }
+  .km-card {
+    background: var(--bg3); border-radius: var(--radius); padding: 20px;
+    border: 1px solid var(--border); position: relative; overflow: hidden;
+    transition: border-color 0.2s;
+  }
+  .km-card:hover { border-color: var(--border2); }
+  .km-card .label { font-size: 11px; font-weight: 500; color: var(--text3); letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 8px; }
+  .km-card .value {
+    font-family: var(--mono); font-size: 36px; font-weight: 500; color: var(--accent);
+    text-shadow: 0 0 30px rgba(0,255,135,0.5);
+    animation: flicker 4s infinite;
+  }
+  .km-card .sub { font-size: 12px; color: var(--text3); margin-top: 4px; font-family: var(--mono); }
+  .km-card .plate {
+    font-size: 11px; font-family: var(--mono); background: var(--bg4);
+    border: 1px solid var(--border); border-radius: 5px; padding: 3px 8px;
+    display: inline-block; margin-bottom: 8px; color: var(--text2);
+  }
+  .km-card .status-dot {
+    width: 8px; height: 8px; border-radius: 50%; background: var(--accent);
+    display: inline-block; margin-right: 6px;
+    box-shadow: 0 0 8px var(--accent);
+    animation: pulse 2s infinite;
+  }
+  .km-card .status-dot.warn { background: var(--warn); box-shadow: 0 0 8px var(--warn); }
+  .km-card .status-dot.danger { background: var(--danger); box-shadow: 0 0 8px var(--danger); }
+  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.6;transform:scale(1.3)} }
+  @keyframes flicker { 0%,100%{opacity:1} 92%{opacity:1} 93%{opacity:0.85} 94%{opacity:1} }
+
+  /* --- GRID LAYOUTS --- */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  @media(max-width:900px) { .grid-2,.grid-3 { grid-template-columns: 1fr; } }
+
+  /* --- CARD --- */
+  .card {
+    background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius-lg);
+    padding: 20px; margin-bottom: 20px;
+  }
+  .card-title {
+    font-size: 14px; font-weight: 700; letter-spacing: 0.5px;
+    margin-bottom: 16px; display: flex; align-items: center; gap: 8px;
+  }
+  .card-title i { color: var(--accent); font-size: 18px; }
+
+  /* --- TABLE --- */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; padding: 10px 12px; color: var(--text3); font-weight: 500; font-size: 11px; letter-spacing: 1px; text-transform: uppercase; border-bottom: 1px solid var(--border); }
+  td { padding: 11px 12px; border-bottom: 1px solid var(--border); color: var(--text); vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+  .badge { font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 20px; font-family: var(--mono); display: inline-block; }
+  .badge.ok { background: rgba(0,255,135,0.12); color: var(--accent); }
+  .badge.warn { background: var(--warn-dim); color: var(--warn); }
+  .badge.danger { background: var(--danger-dim); color: var(--danger); }
+  .badge.info { background: var(--info-dim); color: var(--info); }
+  .badge.purple { background: var(--purple-dim); color: var(--purple); }
+
+  /* --- FORMS --- */
+  .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; }
+  .form-group { display: flex; flex-direction: column; gap: 6px; }
+  label { font-size: 11px; font-weight: 600; color: var(--text3); letter-spacing: 1px; text-transform: uppercase; }
+  input, select, textarea {
+    background: var(--bg3); border: 1px solid var(--border); border-radius: var(--radius);
+    color: var(--text); font-family: var(--sans); font-size: 13px; padding: 9px 12px;
+    outline: none; transition: border-color 0.15s, box-shadow 0.15s; width: 100%;
+  }
+  input:focus, select:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0,255,135,0.1); }
+  select option { background: var(--bg3); }
+  textarea { resize: vertical; min-height: 80px; }
+
+  /* --- BUTTONS --- */
+  .btn {
+    padding: 9px 18px; border-radius: var(--radius); border: 1px solid var(--border);
+    font-family: var(--sans); font-size: 13px; font-weight: 600; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 7px; transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .btn i { font-size: 16px; }
+  .btn-primary { background: var(--accent); color: #000; border-color: var(--accent); }
+  .btn-primary:hover { background: var(--accent2); box-shadow: var(--accent-glow); }
+  .btn-ghost { background: transparent; color: var(--text2); }
+  .btn-ghost:hover { background: var(--bg3); color: var(--text); }
+  .btn-danger { background: var(--danger-dim); color: var(--danger); border-color: rgba(255,85,85,0.3); }
+  .btn-danger:hover { background: rgba(255,85,85,0.2); }
+  .btn-warn { background: var(--warn-dim); color: var(--warn); border-color: rgba(255,179,71,0.3); }
+  .btn-sm { padding: 5px 10px; font-size: 12px; }
+  .btn-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
+
+  /* --- MODAL --- */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 1000;
+    display: none; align-items: center; justify-content: center; padding: 20px;
+    backdrop-filter: blur(4px);
+  }
+  .modal-overlay.show { display: flex; }
+  .modal {
+    background: var(--bg2); border: 1px solid var(--border2); border-radius: var(--radius-lg);
+    padding: 24px; width: 100%; max-width: 640px; max-height: 90vh; overflow-y: auto;
+    position: relative;
+  }
+  .modal-title { font-size: 18px; font-weight: 800; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
+  .modal-title i { color: var(--accent); font-size: 22px; }
+  .modal-close { position: absolute; top: 16px; right: 16px; background: transparent; border: none; color: var(--text3); cursor: pointer; font-size: 20px; transition: color 0.15s; }
+  .modal-close:hover { color: var(--text); }
+
+  /* --- TABS --- */
+  .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin-bottom: 20px; }
+  .tab-btn {
+    padding: 10px 18px; border-radius: 8px 8px 0 0; border: none;
+    background: transparent; color: var(--text3); cursor: pointer;
+    font-family: var(--sans); font-size: 13px; font-weight: 600;
+    border-bottom: 2px solid transparent; margin-bottom: -1px; transition: all 0.15s;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .tab-btn:hover { color: var(--text); }
+  .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* --- PAGE SECTIONS --- */
+  .page { display: none; }
+  .page.active { display: block; }
+
+  /* --- SEPARATOR --- */
+  hr { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
+
+  /* --- PROGRESS BAR --- */
+  .progress-bar { background: var(--bg4); border-radius: 4px; height: 6px; overflow: hidden; }
+  .progress-fill { height: 100%; border-radius: 4px; background: var(--accent); transition: width 0.5s; }
+  .progress-fill.warn { background: var(--warn); }
+  .progress-fill.danger { background: var(--danger); }
+
+  /* --- TIMELINE --- */
+  .timeline { position: relative; padding-left: 20px; }
+  .timeline::before { content: ''; position: absolute; left: 6px; top: 0; bottom: 0; width: 1px; background: var(--border); }
+  .timeline-item { position: relative; padding: 0 0 16px 20px; }
+  .timeline-item::before {
+    content: ''; position: absolute; left: -14px; top: 4px;
+    width: 8px; height: 8px; border-radius: 50%; background: var(--accent);
+    border: 2px solid var(--bg2);
+  }
+  .timeline-item .tl-date { font-size: 11px; color: var(--text3); font-family: var(--mono); margin-bottom: 4px; }
+  .timeline-item .tl-title { font-size: 13px; font-weight: 600; }
+  .timeline-item .tl-sub { font-size: 12px; color: var(--text2); margin-top: 2px; }
+
+  /* --- ALERTS CONFIG --- */
+  .alert-item {
+    display: flex; align-items: center; gap: 12px; padding: 12px 14px;
+    background: var(--bg3); border-radius: var(--radius); margin-bottom: 8px;
+    border: 1px solid var(--border);
+  }
+  .alert-item i { color: var(--warn); font-size: 18px; }
+  .alert-item .alert-text { flex: 1; }
+  .alert-item .alert-text strong { display: block; font-size: 13px; }
+  .alert-item .alert-text span { font-size: 12px; color: var(--text3); }
+
+  /* Print */
+  @media print {
+    header, #alertBanner, .no-print { display: none !important; }
+    body { background: white; color: black; }
+    .card { border: 1px solid #ccc; background: white; }
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--bg4); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="logo">
+    <div class="logo-mark"><i class="ti ti-car" aria-hidden="true"></i></div>
+    <div class="logo-text">Flota<span>Control</span></div>
+  </div>
+  <nav>
+    <button class="active" onclick="showPage('dashboard')" id="nav-dashboard">
+      <i class="ti ti-dashboard" aria-hidden="true"></i>Dashboard
+    </button>
+    <button onclick="showPage('vehiculos')" id="nav-vehiculos">
+      <i class="ti ti-car" aria-hidden="true"></i>Vehículos
+    </button>
+    <button onclick="showPage('conductores')" id="nav-conductores">
+      <i class="ti ti-id-badge" aria-hidden="true"></i>Conductores
+    </button>
+    <button onclick="showPage('registros')" id="nav-registros">
+      <i class="ti ti-route" aria-hidden="true"></i>Registros KM
+    </button>
+    <button onclick="showPage('servicios')" id="nav-servicios">
+      <i class="ti ti-tool" aria-hidden="true"></i>Servicios
+    </button>
+    <button onclick="showPage('alertas')" id="nav-alertas">
+      <i class="ti ti-bell" aria-hidden="true"></i>Alertas
+    </button>
+    <button onclick="showPage('reportes')" id="nav-reportes">
+      <i class="ti ti-file-analytics" aria-hidden="true"></i>Reportes
+    </button>
+    <button class="btn-ghost" onclick="exportData()" title="Exportar datos">
+      <i class="ti ti-upload" aria-hidden="true"></i>
+    </button>
+    <button class="btn-ghost" onclick="triggerImport()" title="Importar datos">
+      <i class="ti ti-download" aria-hidden="true"></i>
+    </button>
+    <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)">
+  </nav>
+</header>
+
+<!-- ALERT BANNER -->
+<div id="alertBanner">
+  <i class="ti ti-alert-triangle" aria-hidden="true"></i>
+  <span id="alertText">Hay vencimientos próximos.</span>
+</div>
+
+<!-- MAIN -->
+<main>
+
+<!-- ===== DASHBOARD ===== -->
+<div class="page active" id="page-dashboard">
+  <div class="section-title">
+    <i class="ti ti-dashboard" aria-hidden="true"></i>
+    Panel <span>Principal</span>
+  </div>
+
+  <!-- KM cards -->
+  <div class="km-hero" id="kmHero">
+    <div style="display:flex;align-items:center;justify-content:center;color:var(--text3);">
+      No hay vehículos registrados. <button class="btn btn-ghost" style="margin-left:10px" onclick="showPage('vehiculos')">Agregar vehículo →</button>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <!-- Alertas activas -->
+    <div class="card">
+      <div class="card-title"><i class="ti ti-bell" aria-hidden="true"></i>Alertas Activas</div>
+      <div id="alertasActivas"><p style="color:var(--text3);font-size:13px;">Sin alertas.</p></div>
+    </div>
+    <!-- Últimos registros -->
+    <div class="card">
+      <div class="card-title"><i class="ti ti-clock" aria-hidden="true"></i>Últimos Registros</div>
+      <div id="ultimosRegistros"><p style="color:var(--text3);font-size:13px;">Sin registros.</p></div>
+    </div>
+  </div>
+
+  <!-- Gráfico KM por mes -->
+  <div class="card">
+    <div class="card-title"><i class="ti ti-chart-bar" aria-hidden="true"></i>KM por Mes — Todos los vehículos</div>
+    <div style="position:relative;height:280px;">
+      <canvas id="chartKmMes" role="img" aria-label="Kilómetros por mes">Sin datos.</canvas>
+    </div>
+  </div>
+
+  <!-- Servicios próximos -->
+  <div class="card">
+    <div class="card-title"><i class="ti ti-tool" aria-hidden="true"></i>Servicios Próximos / Vencidos</div>
+    <div id="serviciosProximos"><p style="color:var(--text3);font-size:13px;">Sin servicios registrados.</p></div>
+  </div>
+</div>
+
+<!-- ===== VEHÍCULOS ===== -->
+<div class="page" id="page-vehiculos">
+  <div class="section-title">
+    <i class="ti ti-car" aria-hidden="true"></i>
+    Gestión de <span>Vehículos</span>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><i class="ti ti-plus" aria-hidden="true"></i>Agregar / Editar Vehículo</div>
+    <input type="hidden" id="vehiculoId">
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Nombre / Alias</label>
+        <input type="text" id="vNombre" placeholder="Ej: Auto 1, Camión Norte">
+      </div>
+      <div class="form-group">
+        <label>Patente / Matrícula</label>
+        <input type="text" id="vPatente" placeholder="ABC 123">
+      </div>
+      <div class="form-group">
+        <label>Tipo</label>
+        <select id="vTipo">
+          <option value="Auto">Auto</option>
+          <option value="Camioneta">Camioneta</option>
+          <option value="Camión">Camión</option>
+          <option value="Moto">Moto</option>
+          <option value="Otro">Otro</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Marca / Modelo</label>
+        <input type="text" id="vModelo" placeholder="Toyota Corolla">
+      </div>
+      <div class="form-group">
+        <label>Año</label>
+        <input type="number" id="vAnio" placeholder="2020" min="1990" max="2030">
+      </div>
+      <div class="form-group">
+        <label>KM Actuales</label>
+        <input type="number" id="vKm" placeholder="0" min="0">
+      </div>
+      <div class="form-group">
+        <label>Vencimiento Seguro</label>
+        <input type="date" id="vSeguro">
+      </div>
+      <div class="form-group">
+        <label>VTV / Revisión técnica</label>
+        <input type="date" id="vVtv">
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="guardarVehiculo()">
+        <i class="ti ti-device-floppy" aria-hidden="true"></i>Guardar Vehículo
+      </button>
+      <button class="btn btn-ghost" onclick="limpiarFormVehiculo()">
+        <i class="ti ti-x" aria-hidden="true"></i>Limpiar
+      </button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><i class="ti ti-list" aria-hidden="true"></i>Flota Registrada</div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Nombre</th><th>Patente</th><th>Tipo</th><th>Modelo</th><th>Año</th>
+            <th>KM Actuales</th><th>Seguro</th><th>VTV</th><th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="tablaVehiculos"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ===== CONDUCTORES ===== -->
+<div class="page" id="page-conductores">
+  <div class="section-title">
+    <i class="ti ti-id-badge" aria-hidden="true"></i>
+    Gestión de <span>Conductores</span>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><i class="ti ti-plus" aria-hidden="true"></i>Agregar / Editar Conductor</div>
+    <input type="hidden" id="conductorId">
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Nombre Completo</label>
+        <input type="text" id="cNombre" placeholder="Juan Pérez">
+      </div>
+      <div class="form-group">
+        <label>DNI / CI</label>
+        <input type="text" id="cDni" placeholder="27.345.678">
+      </div>
+      <div class="form-group">
+        <label>Categoría Carnet</label>
+        <select id="cCategoria">
+          <option value="B">B — Automóviles</option>
+          <option value="C">C — Camiones</option>
+          <option value="D">D — Transporte pasajeros</option>
+          <option value="E">E — Semirremolques</option>
+          <option value="F">F — Especial</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Vencimiento Carnet</label>
+        <input type="date" id="cVencCarnet">
+      </div>
+      <div class="form-group">
+        <label>Teléfono</label>
+        <input type="tel" id="cTelefono" placeholder="+54 9 351 000-0000">
+      </div>
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="cEmail" placeholder="conductor@empresa.com">
+      </div>
+      <div class="form-group" style="grid-column: span 2">
+        <label>Vehículos Autorizados</label>
+        <div id="checkVehiculos" style="display:flex;flex-wrap:wrap;gap:10px;margin-top:4px;"></div>
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="guardarConductor()">
+        <i class="ti ti-device-floppy" aria-hidden="true"></i>Guardar Conductor
+      </button>
+      <button class="btn btn-ghost" onclick="limpiarFormConductor()">
+        <i class="ti ti-x" aria-hidden="true"></i>Limpiar
+      </button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><i class="ti ti-list" aria-hidden="true"></i>Conductores Registrados</div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Nombre</th><th>DNI</th><th>Carnet</th><th>Venc. Carnet</th>
+            <th>Teléfono</th><th>Vehículos Auth.</th><th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="tablaConductores"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ===== REGISTROS KM ===== -->
+<div class="page" id="page-registros">
+  <div class="section-title">
+    <i class="ti ti-route" aria-hidden="true"></i>
+    Registro de <span>Kilómetros</span>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><i class="ti ti-plus" aria-hidden="true"></i>Nuevo Registro</div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Vehículo</label>
+        <select id="rVehiculo"></select>
+      </div>
+      <div class="form-group">
+        <label>Conductor</label>
+        <select id="rConductor"></select>
+      </div>
+      <div class="form-group">
+        <label>Fecha y Hora Salida</label>
+        <input type="datetime-local" id="rFechaSalida">
+      </div>
+      <div class="form-group">
+        <label>KM al Salir</label>
+        <input type="number" id="rKmSalida" placeholder="0" min="0">
+      </div>
+      <div class="form-group">
+        <label>Fecha y Hora Regreso</label>
+        <input type="datetime-local" id="rFechaRegreso">
+      </div>
+      <div class="form-group">
+        <label>KM al Regresar</label>
+        <input type="number" id="rKmRegreso" placeholder="0" min="0">
+      </div>
+      <div class="form-group" style="grid-column:span 2">
+        <label>Destino / Motivo</label>
+        <input type="text" id="rDestino" placeholder="Visita cliente, entrega mercadería...">
+      </div>
+      <div class="form-group" style="grid-column:span 2">
+        <label>Observaciones</label>
+        <textarea id="rObs" placeholder="Novedades del viaje..."></textarea>
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="guardarRegistro()">
+        <i class="ti ti-device-floppy" aria-hidden="true"></i>Registrar
+      </button>
+      <button class="btn btn-ghost" onclick="limpiarFormRegistro()">
+        <i class="ti ti-x" aria-hidden="true"></i>Limpiar
+      </button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><i class="ti ti-filter" aria-hidden="true"></i>Filtros</div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Vehículo</label>
+        <select id="filtroVehiculo" onchange="renderTablaRegistros()">
+          <option value="">Todos</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Mes</label>
+        <input type="month" id="filtroMes" onchange="renderTablaRegistros()">
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><i class="ti ti-history" aria-hidden="true"></i>Historial de Registros</div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Vehículo</th><th>Conductor</th><th>Salida</th><th>Regreso</th>
+            <th>KM Salida</th><th>KM Regreso</th><th>KM Recorridos</th><th>Destino</th><th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="tablaRegistros"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ===== SERVICIOS ===== -->
+<div class="page" id="page-servicios">
+  <div class="section-title">
+    <i class="ti ti-tool" aria-hidden="true"></i>
+    Servicios y <span>Mantenimiento</span>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><i class="ti ti-plus" aria-hidden="true"></i>Registrar Servicio</div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Vehículo</label>
+        <select id="sVehiculo"></select>
+      </div>
+      <div class="form-group">
+        <label>Tipo de Servicio</label>
+        <select id="sTipo">
+          <option value="Cambio de aceite">Cambio de aceite</option>
+          <option value="Cambio de filtro de aire">Cambio de filtro de aire</option>
+          <option value="Cambio de filtro de combustible">Cambio de filtro de combustible</option>
+          <option value="Cambio de batería">Cambio de batería</option>
+          <option value="Cambio de cubiertas">Cambio de cubiertas</option>
+          <option value="Cambio de frenos">Cambio de frenos</option>
+          <option value="Cambio de correa de distribución">Cambio de correa de distribución</option>
+          <option value="Service general">Service general</option>
+          <option value="Reparación">Reparación</option>
+          <option value="Otro">Otro</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Fecha del Servicio</label>
+        <input type="date" id="sFecha">
+      </div>
+      <div class="form-group">
+        <label>KM en el Servicio</label>
+        <input type="number" id="sKm" placeholder="0" min="0">
+      </div>
+      <div class="form-group">
+        <label>Próximo Servicio KM (opcional)</label>
+        <input type="number" id="sProxKm" placeholder="Ej: 15000">
+      </div>
+      <div class="form-group">
+        <label>Próxima Fecha (opcional)</label>
+        <input type="date" id="sProxFecha">
+      </div>
+      <div class="form-group">
+        <label>Costo ($)</label>
+        <input type="number" id="sCosto" placeholder="0" min="0">
+      </div>
+      <div class="form-group">
+        <label>Proveedor / Taller</label>
+        <input type="text" id="sProveedor" placeholder="Taller El Rápido">
+      </div>
+      <div class="form-group" style="grid-column:span 2">
+        <label>Descripción / Notas</label>
+        <textarea id="sDesc" placeholder="Detalle del trabajo realizado..."></textarea>
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="guardarServicio()">
+        <i class="ti ti-device-floppy" aria-hidden="true"></i>Registrar Servicio
+      </button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><i class="ti ti-history" aria-hidden="true"></i>Historial de Servicios</div>
+    <div class="form-grid" style="margin-bottom:16px">
+      <div class="form-group">
+        <label>Filtrar por Vehículo</label>
+        <select id="filtroServVehiculo" onchange="renderTablaServicios()">
+          <option value="">Todos</option>
+        </select>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Vehículo</th><th>Servicio</th><th>Fecha</th><th>KM</th>
+            <th>Próx. KM</th><th>Próx. Fecha</th><th>Costo</th><th>Proveedor</th><th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="tablaServicios"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ===== ALERTAS / CONFIG ===== -->
+<div class="page" id="page-alertas">
+  <div class="section-title">
+    <i class="ti ti-bell" aria-hidden="true"></i>
+    Alertas y <span>Notificaciones</span>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><i class="ti ti-mail" aria-hidden="true"></i>Contactos para Alertas (Email / Tel)</div>
+    <p style="color:var(--text3);font-size:12px;margin-bottom:14px;">Cuando existan vencimientos próximos el sistema generará un email de alerta a estos contactos. Los botones generan un mailto: con el resumen.</p>
+    <div id="listaContactos"></div>
+    <div class="form-grid" style="margin-top:14px">
+      <div class="form-group">
+        <label>Nombre</label>
+        <input type="text" id="ctcNombre" placeholder="Supervisor">
+      </div>
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="ctcEmail" placeholder="supervisor@empresa.com">
+      </div>
+      <div class="form-group">
+        <label>Teléfono (opcional)</label>
+        <input type="tel" id="ctcTel" placeholder="+54 9 351 000-0000">
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="agregarContacto()">
+        <i class="ti ti-plus" aria-hidden="true"></i>Agregar Contacto
+      </button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><i class="ti ti-settings" aria-hidden="true"></i>Configuración de Alertas</div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Días de anticipación — Carnet</label>
+        <input type="number" id="diasCarnet" value="30" min="1" max="180">
+      </div>
+      <div class="form-group">
+        <label>Días de anticipación — Seguro</label>
+        <input type="number" id="diasSeguro" value="30" min="1" max="180">
+      </div>
+      <div class="form-group">
+        <label>Días de anticipación — VTV</label>
+        <input type="number" id="diasVtv" value="30" min="1" max="180">
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="guardarConfigAlertas()">
+        <i class="ti ti-device-floppy" aria-hidden="true"></i>Guardar Configuración
+      </button>
+      <button class="btn btn-warn" onclick="enviarAlertaEmail()">
+        <i class="ti ti-send" aria-hidden="true"></i>Enviar Resumen por Email
+      </button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><i class="ti ti-alert-triangle" aria-hidden="true"></i>Alertas Detectadas Ahora</div>
+    <div id="alertasDetalladas"></div>
+  </div>
+</div>
+
+<!-- ===== REPORTES ===== -->
+<div class="page" id="page-reportes">
+  <div class="section-title">
+    <i class="ti ti-file-analytics" aria-hidden="true"></i>
+    Reportes <span>PDF</span>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><i class="ti ti-settings" aria-hidden="true"></i>Configurar Reporte</div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Vehículo</label>
+        <select id="repVehiculo">
+          <option value="">Todos los vehículos</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Año</label>
+        <input type="number" id="repAnio" value="2025" min="2020" max="2030">
+      </div>
+      <div class="form-group">
+        <label>Mes (0 = Anual)</label>
+        <select id="repMes">
+          <option value="0">Reporte Anual</option>
+          <option value="1">Enero</option><option value="2">Febrero</option>
+          <option value="3">Marzo</option><option value="4">Abril</option>
+          <option value="5">Mayo</option><option value="6">Junio</option>
+          <option value="7">Julio</option><option value="8">Agosto</option>
+          <option value="9">Septiembre</option><option value="10">Octubre</option>
+          <option value="11">Noviembre</option><option value="12">Diciembre</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Empresa / Encabezado</label>
+        <input type="text" id="repEmpresa" placeholder="EMPRESA S.A.">
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="generarPDF()">
+        <i class="ti ti-file-download" aria-hidden="true"></i>Generar PDF
+      </button>
+      <button class="btn btn-ghost" onclick="previstaReporte()">
+        <i class="ti ti-eye" aria-hidden="true"></i>Vista Previa
+      </button>
+    </div>
+  </div>
+
+  <!-- VISTA PREVIA -->
+  <div class="card" id="previstaCard" style="display:none">
+    <div class="card-title"><i class="ti ti-eye" aria-hidden="true"></i>Vista Previa del Reporte</div>
+    <div id="previstaContenido"></div>
+  </div>
+</div>
+
+</main>
+
+<!-- MODALES -->
+<!-- Modal Eliminar Confirmación -->
+<div class="modal-overlay" id="modalConfirm">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-title"><i class="ti ti-alert-circle" aria-hidden="true"></i>Confirmar</div>
+    <button class="modal-close" onclick="closeModal('modalConfirm')"><i class="ti ti-x"></i></button>
+    <p id="confirmMsg" style="color:var(--text2);margin-bottom:20px;font-size:14px;">¿Estás seguro?</p>
+    <div class="btn-row">
+      <button class="btn btn-danger" id="confirmBtn">Eliminar</button>
+      <button class="btn btn-ghost" onclick="closeModal('modalConfirm')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Detalle Vehículo -->
+<div class="modal-overlay" id="modalDetalle">
+  <div class="modal">
+    <div class="modal-title"><i class="ti ti-car" aria-hidden="true"></i>Detalle del Vehículo</div>
+    <button class="modal-close" onclick="closeModal('modalDetalle')"><i class="ti ti-x"></i></button>
+    <div id="detalleContenido"></div>
+  </div>
+</div>
+
+<script>
+// ===================== ESTADO GLOBAL =====================
+let state = {
+  vehiculos: [],
+  conductores: [],
+  registros: [],
+  servicios: [],
+  contactos: [],
+  configAlertas: { diasCarnet: 30, diasSeguro: 30, diasVtv: 30 }
+};
+let kmChart = null;
+
+// ===================== PERSISTENCIA =====================
+function saveState() {
+  localStorage.setItem('flotaControlData', JSON.stringify(state));
+}
+function loadState() {
+  const raw = localStorage.getItem('flotaControlData');
+  if (raw) {
+    try { state = { ...state, ...JSON.parse(raw) }; } catch(e) {}
+  }
+}
+function exportData() {
+  const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'flota-backup-' + new Date().toISOString().slice(0,10) + '.json';
+  a.click(); URL.revokeObjectURL(url);
+}
+function triggerImport() { document.getElementById('importFile').click(); }
+function importData(e) {
+  const file = e.target.files[0]; if (!file) return;
+  const r = new FileReader();
+  r.onload = ev => {
+    try {
+      state = JSON.parse(ev.target.result);
+      saveState(); renderAll(); showToast('Datos importados correctamente', 'ok');
+    } catch(err) { showToast('Error al importar el archivo', 'danger'); }
+  };
+  r.readAsText(file);
+}
+
+// ===================== UTILIDADES =====================
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2); }
+function fmtDate(str) {
+  if (!str) return '—';
+  const d = new Date(str + (str.includes('T') ? '' : 'T00:00:00'));
+  return d.toLocaleDateString('es-AR');
+}
+function fmtDateTime(str) {
+  if (!str) return '—';
+  return new Date(str).toLocaleString('es-AR');
+}
+function diffDays(dateStr) {
+  if (!dateStr) return 9999;
+  const d = new Date(dateStr + 'T00:00:00');
+  const now = new Date(); now.setHours(0,0,0,0);
+  return Math.ceil((d - now) / 86400000);
+}
+function statusVenc(days) {
+  if (days < 0) return 'danger';
+  if (days <= 30) return 'warn';
+  return 'ok';
+}
+function badgeVenc(days, label) {
+  const cls = statusVenc(days);
+  const txt = days < 0 ? `Vencido ${Math.abs(days)}d` : days <= 30 ? `Vence en ${days}d` : label || 'Vigente';
+  return `<span class="badge ${cls}">${txt}</span>`;
+}
+function showToast(msg, type = 'ok') {
+  const t = document.createElement('div');
+  t.style.cssText = `position:fixed;bottom:24px;right:24px;z-index:9999;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:600;font-family:var(--sans);background:var(--bg2);border:1px solid var(--border2);color:var(--text);box-shadow:0 8px 32px rgba(0,0,0,0.5);`;
+  const colors = { ok: 'var(--accent)', danger: 'var(--danger)', warn: 'var(--warn)' };
+  t.style.borderLeftColor = colors[type] || colors.ok;
+  t.style.borderLeftWidth = '3px';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 3000);
+}
+function openModal(id) { document.getElementById(id).classList.add('show'); }
+function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+function confirm(msg, fn) {
+  document.getElementById('confirmMsg').textContent = msg;
+  document.getElementById('confirmBtn').onclick = () => { fn(); closeModal('modalConfirm'); };
+  openModal('modalConfirm');
+}
+function getVehiculo(id) { return state.vehiculos.find(v => v.id === id); }
+function getConductor(id) { return state.conductores.find(c => c.id === id); }
+function getVehiculoNombre(id) { const v = getVehiculo(id); return v ? `${v.nombre} (${v.patente})` : '—'; }
+function getConductorNombre(id) { const c = getConductor(id); return c ? c.nombre : '—'; }
+const MESES = ['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+
+// ===================== NAVEGACIÓN =====================
+function showPage(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('header nav button[id]').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + page).classList.add('active');
+  document.getElementById('nav-' + page).classList.add('active');
+  if (page === 'dashboard') renderDashboard();
+  if (page === 'vehiculos') renderTablaVehiculos();
+  if (page === 'conductores') { renderCheckVehiculos(); renderTablaConductores(); }
+  if (page === 'registros') { poblarSelectsRegistro(); renderTablaRegistros(); }
+  if (page === 'servicios') { poblarSelectsServicio(); renderTablaServicios(); }
+  if (page === 'alertas') { renderContactos(); renderAlertasDetalladas(); cargarConfigAlertas(); }
+  if (page === 'reportes') poblarSelectsReporte();
+}
+
+// ===================== VEHICULOS =====================
+function guardarVehiculo() {
+  const id = document.getElementById('vehiculoId').value;
+  const v = {
+    id: id || uid(),
+    nombre: document.getElementById('vNombre').value.trim(),
+    patente: document.getElementById('vPatente').value.trim().toUpperCase(),
+    tipo: document.getElementById('vTipo').value,
+    modelo: document.getElementById('vModelo').value.trim(),
+    anio: document.getElementById('vAnio').value,
+    km: parseInt(document.getElementById('vKm').value) || 0,
+    seguro: document.getElementById('vSeguro').value,
+    vtv: document.getElementById('vVtv').value,
+  };
+  if (!v.nombre) { showToast('Ingresá el nombre del vehículo', 'warn'); return; }
+  if (id) {
+    const idx = state.vehiculos.findIndex(x => x.id === id);
+    state.vehiculos[idx] = v;
+  } else {
+    state.vehiculos.push(v);
+  }
+  saveState(); limpiarFormVehiculo(); renderTablaVehiculos();
+  showToast('Vehículo guardado', 'ok');
+}
+function limpiarFormVehiculo() {
+  ['vehiculoId','vNombre','vPatente','vModelo','vAnio','vKm','vSeguro','vVtv'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  document.getElementById('vTipo').value = 'Auto';
+}
+function editarVehiculo(id) {
+  const v = getVehiculo(id); if (!v) return;
+  document.getElementById('vehiculoId').value = v.id;
+  document.getElementById('vNombre').value = v.nombre;
+  document.getElementById('vPatente').value = v.patente;
+  document.getElementById('vTipo').value = v.tipo;
+  document.getElementById('vModelo').value = v.modelo;
+  document.getElementById('vAnio').value = v.anio;
+  document.getElementById('vKm').value = v.km;
+  document.getElementById('vSeguro').value = v.seguro || '';
+  document.getElementById('vVtv').value = v.vtv || '';
+  window.scrollTo(0, 0);
+}
+function eliminarVehiculo(id) {
+  confirm('¿Eliminar este vehículo? Se perderán los registros asociados.', () => {
+    state.vehiculos = state.vehiculos.filter(v => v.id !== id);
+    state.registros = state.registros.filter(r => r.vehiculoId !== id);
+    state.servicios = state.servicios.filter(s => s.vehiculoId !== id);
+    saveState(); renderTablaVehiculos(); showToast('Vehículo eliminado', 'danger');
+  });
+}
+function renderTablaVehiculos() {
+  const tbody = document.getElementById('tablaVehiculos');
+  if (!state.vehiculos.length) {
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--text3);">Sin vehículos registrados.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = state.vehiculos.map(v => {
+    const dS = diffDays(v.seguro), dV = diffDays(v.vtv);
+    return `<tr>
+      <td><strong>${v.nombre}</strong></td>
+      <td><span class="badge info" style="font-family:var(--mono)">${v.patente || '—'}</span></td>
+      <td>${v.tipo}</td>
+      <td>${v.modelo || '—'}</td>
+      <td>${v.anio || '—'}</td>
+      <td><span style="font-family:var(--mono);color:var(--accent);font-size:13px;">${v.km.toLocaleString('es-AR')} km</span></td>
+      <td>${v.seguro ? badgeVenc(dS, fmtDate(v.seguro)) : '<span class="badge warn">Sin fecha</span>'}</td>
+      <td>${v.vtv ? badgeVenc(dV, fmtDate(v.vtv)) : '<span class="badge warn">Sin fecha</span>'}</td>
+      <td>
+        <div style="display:flex;gap:4px">
+          <button class="btn btn-ghost btn-sm" onclick="editarVehiculo('${v.id}')"><i class="ti ti-edit"></i></button>
+          <button class="btn btn-ghost btn-sm" onclick="verDetalleVehiculo('${v.id}')"><i class="ti ti-eye"></i></button>
+          <button class="btn btn-danger btn-sm" onclick="eliminarVehiculo('${v.id}')"><i class="ti ti-trash"></i></button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+function verDetalleVehiculo(id) {
+  const v = getVehiculo(id); if (!v) return;
+  const regs = state.registros.filter(r => r.vehiculoId === id);
+  const servs = state.servicios.filter(s => s.vehiculoId === id);
+  const kmTotal = regs.reduce((s, r) => s + (r.kmRegreso - r.kmSalida), 0);
+  document.getElementById('detalleContenido').innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px">
+      <div><span style="color:var(--text3);font-size:11px">VEHÍCULO</span><p style="font-weight:700;margin-top:4px">${v.nombre}</p></div>
+      <div><span style="color:var(--text3);font-size:11px">PATENTE</span><p style="font-family:var(--mono);margin-top:4px">${v.patente||'—'}</p></div>
+      <div><span style="color:var(--text3);font-size:11px">MODELO</span><p style="margin-top:4px">${v.modelo||'—'} (${v.anio||'—'})</p></div>
+      <div><span style="color:var(--text3);font-size:11px">KM ACTUALES</span><p style="font-family:var(--mono);color:var(--accent);font-size:18px;margin-top:4px">${v.km.toLocaleString('es-AR')}</p></div>
+      <div><span style="color:var(--text3);font-size:11px">KM RECORRIDOS (registros)</span><p style="font-family:var(--mono);margin-top:4px">${kmTotal.toLocaleString('es-AR')}</p></div>
+      <div><span style="color:var(--text3);font-size:11px">VIAJES REGISTRADOS</span><p style="margin-top:4px">${regs.length}</p></div>
+    </div>
+    <hr>
+    <p style="font-weight:700;margin:16px 0 10px">Últimos servicios</p>
+    ${servs.length ? servs.slice(-5).reverse().map(s=>`
+      <div class="timeline-item" style="padding:8px 0 8px 20px;border-left:2px solid var(--border);margin-left:8px;padding-left:16px;margin-bottom:8px">
+        <div class="tl-date">${fmtDate(s.fecha)} — ${s.km.toLocaleString('es-AR')} km</div>
+        <div class="tl-title">${s.tipo}</div>
+        <div class="tl-sub">${s.proveedor||''} ${s.costo?'· $'+Number(s.costo).toLocaleString('es-AR'):''}</div>
+      </div>
+    `).join('') : '<p style="color:var(--text3);font-size:13px">Sin servicios.</p>'}
+  `;
+  openModal('modalDetalle');
+}
+
+// ===================== CONDUCTORES =====================
+function renderCheckVehiculos() {
+  const c = document.getElementById('checkVehiculos');
+  c.innerHTML = state.vehiculos.map(v => `
+    <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;font-weight:400;text-transform:none;letter-spacing:0;color:var(--text)">
+      <input type="checkbox" value="${v.id}" name="vehAuth" style="width:auto;accent-color:var(--accent)">
+      ${v.nombre} (${v.patente||'s/p'})
+    </label>
+  `).join('') || '<p style="color:var(--text3);font-size:12px">Primero agregá vehículos.</p>';
+}
+function guardarConductor() {
+  const id = document.getElementById('conductorId').value;
+  const checks = [...document.querySelectorAll('input[name=vehAuth]:checked')].map(c => c.value);
+  const c = {
+    id: id || uid(),
+    nombre: document.getElementById('cNombre').value.trim(),
+    dni: document.getElementById('cDni').value.trim(),
+    categoria: document.getElementById('cCategoria').value,
+    vencCarnet: document.getElementById('cVencCarnet').value,
+    telefono: document.getElementById('cTelefono').value.trim(),
+    email: document.getElementById('cEmail').value.trim(),
+    vehiculosAuth: checks,
+  };
+  if (!c.nombre) { showToast('Ingresá el nombre del conductor', 'warn'); return; }
+  if (id) {
+    const idx = state.conductores.findIndex(x => x.id === id);
+    state.conductores[idx] = c;
+  } else {
+    state.conductores.push(c);
+  }
+  saveState(); limpiarFormConductor(); renderTablaConductores();
+  showToast('Conductor guardado', 'ok');
+}
+function limpiarFormConductor() {
+  document.getElementById('conductorId').value = '';
+  ['cNombre','cDni','cVencCarnet','cTelefono','cEmail'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('cCategoria').value = 'B';
+  document.querySelectorAll('input[name=vehAuth]').forEach(c => c.checked = false);
+}
+function editarConductor(id) {
+  const c = getConductor(id); if (!c) return;
+  document.getElementById('conductorId').value = c.id;
+  document.getElementById('cNombre').value = c.nombre;
+  document.getElementById('cDni').value = c.dni;
+  document.getElementById('cCategoria').value = c.categoria;
+  document.getElementById('cVencCarnet').value = c.vencCarnet || '';
+  document.getElementById('cTelefono').value = c.telefono;
+  document.getElementById('cEmail').value = c.email;
+  renderCheckVehiculos();
+  setTimeout(() => {
+    document.querySelectorAll('input[name=vehAuth]').forEach(cb => {
+      cb.checked = (c.vehiculosAuth || []).includes(cb.value);
+    });
+  }, 50);
+  window.scrollTo(0, 0);
+}
+function eliminarConductor(id) {
+  confirm('¿Eliminar este conductor?', () => {
+    state.conductores = state.conductores.filter(c => c.id !== id);
+    saveState(); renderTablaConductores(); showToast('Conductor eliminado', 'danger');
+  });
+}
+function renderTablaConductores() {
+  const tbody = document.getElementById('tablaConductores');
+  if (!state.conductores.length) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text3);">Sin conductores registrados.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = state.conductores.map(c => {
+    const days = diffDays(c.vencCarnet);
+    const vehNombres = (c.vehiculosAuth || []).map(id => { const v = getVehiculo(id); return v ? v.nombre : ''; }).filter(Boolean).join(', ') || '—';
+    return `<tr>
+      <td><strong>${c.nombre}</strong></td>
+      <td style="font-family:var(--mono)">${c.dni || '—'}</td>
+      <td><span class="badge purple">Cat. ${c.categoria}</span></td>
+      <td>${c.vencCarnet ? badgeVenc(days, fmtDate(c.vencCarnet)) : '<span class="badge warn">Sin fecha</span>'}</td>
+      <td>${c.telefono || '—'}</td>
+      <td style="font-size:12px;color:var(--text2)">${vehNombres}</td>
+      <td>
+        <div style="display:flex;gap:4px">
+          <button class="btn btn-ghost btn-sm" onclick="editarConductor('${c.id}')"><i class="ti ti-edit"></i></button>
+          <button class="btn btn-danger btn-sm" onclick="eliminarConductor('${c.id}')"><i class="ti ti-trash"></i></button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+// ===================== REGISTROS KM =====================
+function poblarSelectsRegistro() {
+  const sveh = document.getElementById('rVehiculo');
+  const sveh2 = document.getElementById('filtroVehiculo');
+  const sCond = document.getElementById('rConductor');
+  sveh.innerHTML = state.vehiculos.map(v => `<option value="${v.id}">${v.nombre} (${v.patente||'s/p'})</option>`).join('') || '<option>Sin vehículos</option>';
+  sveh2.innerHTML = '<option value="">Todos</option>' + state.vehiculos.map(v => `<option value="${v.id}">${v.nombre}</option>`).join('');
+  sCond.innerHTML = '<option value="">Sin conductor / Pendiente</option>' + state.conductores.map(c => `<option value="${c.id}">${c.nombre}</option>`).join('');
+  // Default fecha salida = ahora
+  const now = new Date();
+  const local = now.toISOString().slice(0,16);
+  document.getElementById('rFechaSalida').value = local;
+}
+function guardarRegistro() {
+  const vId = document.getElementById('rVehiculo').value;
+  const kmS = parseInt(document.getElementById('rKmSalida').value) || 0;
+  const kmR = parseInt(document.getElementById('rKmRegreso').value) || 0;
+  if (!vId) { showToast('Seleccioná un vehículo', 'warn'); return; }
+  const r = {
+    id: uid(),
+    vehiculoId: vId,
+    conductorId: document.getElementById('rConductor').value,
+    fechaSalida: document.getElementById('rFechaSalida').value,
+    fechaRegreso: document.getElementById('rFechaRegreso').value,
+    kmSalida: kmS,
+    kmRegreso: kmR,
+    destino: document.getElementById('rDestino').value.trim(),
+    obs: document.getElementById('rObs').value.trim(),
+    fecha: new Date().toISOString(),
+  };
+  state.registros.push(r);
+  // Actualizar km del vehículo si es mayor
+  const v = getVehiculo(vId);
+  if (v && kmR > v.km) { v.km = kmR; }
+  saveState(); limpiarFormRegistro(); renderTablaRegistros();
+  showToast('Registro guardado', 'ok');
+}
+function limpiarFormRegistro() {
+  ['rKmSalida','rKmRegreso','rFechaRegreso','rDestino','rObs'].forEach(id => document.getElementById(id).value = '');
+}
+function eliminarRegistro(id) {
+  confirm('¿Eliminar este registro?', () => {
+    state.registros = state.registros.filter(r => r.id !== id);
+    saveState(); renderTablaRegistros(); showToast('Registro eliminado', 'danger');
+  });
+}
+function renderTablaRegistros() {
+  const tbody = document.getElementById('tablaRegistros');
+  const filtroV = document.getElementById('filtroVehiculo').value;
+  const filtroM = document.getElementById('filtroMes').value;
+  let regs = [...state.registros].reverse();
+  if (filtroV) regs = regs.filter(r => r.vehiculoId === filtroV);
+  if (filtroM) regs = regs.filter(r => r.fechaSalida && r.fechaSalida.startsWith(filtroM));
+  if (!regs.length) {
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--text3);">Sin registros.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = regs.map(r => {
+    const kmRec = r.kmRegreso > 0 ? r.kmRegreso - r.kmSalida : 0;
+    return `<tr>
+      <td><strong>${getVehiculoNombre(r.vehiculoId)}</strong></td>
+      <td>${getConductorNombre(r.conductorId)}</td>
+      <td style="font-family:var(--mono);font-size:12px">${fmtDateTime(r.fechaSalida)}</td>
+      <td style="font-family:var(--mono);font-size:12px">${r.fechaRegreso ? fmtDateTime(r.fechaRegreso) : '<span class="badge warn">En curso</span>'}</td>
+      <td style="font-family:var(--mono)">${r.kmSalida.toLocaleString('es-AR')}</td>
+      <td style="font-family:var(--mono)">${r.kmRegreso > 0 ? r.kmRegreso.toLocaleString('es-AR') : '—'}</td>
+      <td><span style="font-family:var(--mono);color:var(--accent)">${kmRec > 0 ? '+' + kmRec.toLocaleString('es-AR') : '—'}</span></td>
+      <td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.destino || '—'}</td>
+      <td><button class="btn btn-danger btn-sm" onclick="eliminarRegistro('${r.id}')"><i class="ti ti-trash"></i></button></td>
+    </tr>`;
+  }).join('');
+}
+
+// ===================== SERVICIOS =====================
+function poblarSelectsServicio() {
+  const s = document.getElementById('sVehiculo');
+  const s2 = document.getElementById('filtroServVehiculo');
+  s.innerHTML = state.vehiculos.map(v => `<option value="${v.id}">${v.nombre} (${v.patente||'s/p'})</option>`).join('') || '<option>Sin vehículos</option>';
+  s2.innerHTML = '<option value="">Todos</option>' + state.vehiculos.map(v => `<option value="${v.id}">${v.nombre}</option>`).join('');
+  document.getElementById('sFecha').value = new Date().toISOString().slice(0,10);
+}
+function guardarServicio() {
+  const vId = document.getElementById('sVehiculo').value;
+  if (!vId) { showToast('Seleccioná un vehículo', 'warn'); return; }
+  const s = {
+    id: uid(),
+    vehiculoId: vId,
+    tipo: document.getElementById('sTipo').value,
+    fecha: document.getElementById('sFecha').value,
+    km: parseInt(document.getElementById('sKm').value) || 0,
+    proxKm: parseInt(document.getElementById('sProxKm').value) || 0,
+    proxFecha: document.getElementById('sProxFecha').value,
+    costo: parseFloat(document.getElementById('sCosto').value) || 0,
+    proveedor: document.getElementById('sProveedor').value.trim(),
+    desc: document.getElementById('sDesc').value.trim(),
+  };
+  state.servicios.push(s);
+  saveState();
+  ['sKm','sProxKm','sProxFecha','sCosto','sProveedor','sDesc'].forEach(id => document.getElementById(id).value = '');
+  renderTablaServicios(); showToast('Servicio registrado', 'ok');
+}
+function eliminarServicio(id) {
+  confirm('¿Eliminar este servicio?', () => {
+    state.servicios = state.servicios.filter(s => s.id !== id);
+    saveState(); renderTablaServicios(); showToast('Servicio eliminado', 'danger');
+  });
+}
+function renderTablaServicios() {
+  const tbody = document.getElementById('tablaServicios');
+  const filtroV = document.getElementById('filtroServVehiculo').value;
+  let servs = [...state.servicios].reverse();
+  if (filtroV) servs = servs.filter(s => s.vehiculoId === filtroV);
+  if (!servs.length) {
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--text3);">Sin servicios.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = servs.map(s => {
+    const veh = getVehiculo(s.vehiculoId);
+    const vehActKm = veh ? veh.km : 0;
+    let proxKmBadge = '—';
+    if (s.proxKm > 0) {
+      const diff = s.proxKm - vehActKm;
+      proxKmBadge = diff <= 0 ? `<span class="badge danger">Vencido (${Math.abs(diff).toLocaleString()} km pasado)</span>` :
+                    diff <= 500 ? `<span class="badge warn">Faltan ${diff.toLocaleString()} km</span>` :
+                    `<span class="badge ok">${s.proxKm.toLocaleString('es-AR')} km</span>`;
+    }
+    let proxFechaBadge = '—';
+    if (s.proxFecha) {
+      const d = diffDays(s.proxFecha);
+      proxFechaBadge = badgeVenc(d, fmtDate(s.proxFecha));
+    }
+    return `<tr>
+      <td><strong>${getVehiculoNombre(s.vehiculoId)}</strong></td>
+      <td>${s.tipo}</td>
+      <td style="font-family:var(--mono);font-size:12px">${fmtDate(s.fecha)}</td>
+      <td style="font-family:var(--mono)">${s.km.toLocaleString('es-AR')}</td>
+      <td>${proxKmBadge}</td>
+      <td>${proxFechaBadge}</td>
+      <td style="font-family:var(--mono)">${s.costo > 0 ? '$' + s.costo.toLocaleString('es-AR') : '—'}</td>
+      <td>${s.proveedor || '—'}</td>
+      <td><button class="btn btn-danger btn-sm" onclick="eliminarServicio('${s.id}')"><i class="ti ti-trash"></i></button></td>
+    </tr>`;
+  }).join('');
+}
+
+// ===================== ALERTAS =====================
+function cargarConfigAlertas() {
+  document.getElementById('diasCarnet').value = state.configAlertas.diasCarnet;
+  document.getElementById('diasSeguro').value = state.configAlertas.diasSeguro;
+  document.getElementById('diasVtv').value = state.configAlertas.diasVtv;
+}
+function guardarConfigAlertas() {
+  state.configAlertas = {
+    diasCarnet: parseInt(document.getElementById('diasCarnet').value) || 30,
+    diasSeguro: parseInt(document.getElementById('diasSeguro').value) || 30,
+    diasVtv: parseInt(document.getElementById('diasVtv').value) || 30,
+  };
+  saveState(); renderAlertasDetalladas(); showToast('Configuración guardada', 'ok');
+}
+function agregarContacto() {
+  const n = document.getElementById('ctcNombre').value.trim();
+  const e = document.getElementById('ctcEmail').value.trim();
+  const t = document.getElementById('ctcTel').value.trim();
+  if (!n || !e) { showToast('Nombre y email son obligatorios', 'warn'); return; }
+  state.contactos.push({ id: uid(), nombre: n, email: e, tel: t });
+  saveState();
+  ['ctcNombre','ctcEmail','ctcTel'].forEach(id => document.getElementById(id).value = '');
+  renderContactos(); showToast('Contacto agregado', 'ok');
+}
+function eliminarContacto(id) {
+  state.contactos = state.contactos.filter(c => c.id !== id);
+  saveState(); renderContactos();
+}
+function renderContactos() {
+  const c = document.getElementById('listaContactos');
+  if (!state.contactos.length) { c.innerHTML = '<p style="color:var(--text3);font-size:13px">Sin contactos configurados.</p>'; return; }
+  c.innerHTML = state.contactos.map(ct => `
+    <div class="alert-item">
+      <i class="ti ti-user" aria-hidden="true"></i>
+      <div class="alert-text">
+        <strong>${ct.nombre}</strong>
+        <span>${ct.email}${ct.tel ? ' · ' + ct.tel : ''}</span>
+      </div>
+      <button class="btn btn-danger btn-sm" onclick="eliminarContacto('${ct.id}')"><i class="ti ti-trash"></i></button>
+    </div>
+  `).join('');
+}
+function getAlertas() {
+  const alerts = [];
+  const cfg = state.configAlertas;
+  state.conductores.forEach(c => {
+    const d = diffDays(c.vencCarnet);
+    if (c.vencCarnet && d <= cfg.diasCarnet) {
+      alerts.push({ tipo: 'Carnet', nombre: c.nombre, dias: d, vence: c.vencCarnet, icon: 'ti-id-badge', cls: statusVenc(d) });
+    }
+  });
+  state.vehiculos.forEach(v => {
+    if (v.seguro) {
+      const d = diffDays(v.seguro);
+      if (d <= cfg.diasSeguro) alerts.push({ tipo: 'Seguro', nombre: v.nombre + ' (' + (v.patente||'s/p') + ')', dias: d, vence: v.seguro, icon: 'ti-shield', cls: statusVenc(d) });
+    }
+    if (v.vtv) {
+      const d = diffDays(v.vtv);
+      if (d <= cfg.diasVtv) alerts.push({ tipo: 'VTV', nombre: v.nombre + ' (' + (v.patente||'s/p') + ')', dias: d, vence: v.vtv, icon: 'ti-car', cls: statusVenc(d) });
+    }
+  });
+  state.servicios.forEach(s => {
+    const veh = getVehiculo(s.vehiculoId);
+    if (!veh) return;
+    if (s.proxFecha) {
+      const d = diffDays(s.proxFecha);
+      if (d <= 30) alerts.push({ tipo: 'Servicio: ' + s.tipo, nombre: veh.nombre, dias: d, vence: s.proxFecha, icon: 'ti-tool', cls: statusVenc(d) });
+    }
+    if (s.proxKm > 0 && veh.km > 0) {
+      const diff = s.proxKm - veh.km;
+      if (diff <= 500) alerts.push({ tipo: 'Servicio KM: ' + s.tipo, nombre: veh.nombre, dias: diff, vence: null, icon: 'ti-tool', cls: diff <= 0 ? 'danger' : 'warn', kmMode: true });
+    }
+  });
+  return alerts;
+}
+function renderAlertasDetalladas() {
+  const alerts = getAlertas();
+  const c = document.getElementById('alertasDetalladas');
+  if (!alerts.length) { c.innerHTML = '<p style="color:var(--accent);font-size:13px"><i class="ti ti-check" style="vertical-align:-2px"></i> Sin alertas activas.</p>'; return; }
+  c.innerHTML = alerts.map(a => `
+    <div class="alert-item" style="border-color:var(--${a.cls === 'danger' ? 'danger' : a.cls === 'warn' ? 'warn' : 'accent'}-dim)">
+      <i class="ti ${a.icon}" style="color:var(--${a.cls === 'danger' ? 'danger' : a.cls === 'warn' ? 'warn' : 'accent'})" aria-hidden="true"></i>
+      <div class="alert-text">
+        <strong>${a.tipo} — ${a.nombre}</strong>
+        <span>${a.kmMode
+          ? (a.dias <= 0 ? 'Vencido por ' + Math.abs(a.dias).toLocaleString() + ' km' : 'Faltan ' + a.dias.toLocaleString() + ' km')
+          : (a.dias < 0 ? 'Vencido hace ' + Math.abs(a.dias) + ' días' : 'Vence en ' + a.dias + ' días (' + fmtDate(a.vence) + ')')
+        }</span>
+      </div>
+      <span class="badge ${a.cls}">${a.cls === 'danger' ? 'VENCIDO' : 'PRÓXIMO'}</span>
+    </div>
+  `).join('');
+}
+function enviarAlertaEmail() {
+  const alerts = getAlertas();
+  if (!alerts.length) { showToast('No hay alertas activas', 'ok'); return; }
+  if (!state.contactos.length) { showToast('Agregá contactos primero', 'warn'); return; }
+  const body = 'RESUMEN DE ALERTAS - FlotaControl\n\n' +
+    alerts.map(a => `• ${a.tipo}: ${a.nombre} — ${a.kmMode ? (a.dias<=0?'Vencido':'Faltan '+a.dias+' km') : (a.dias<0?'Vencido':'Vence en '+a.dias+' días')}`).join('\n') +
+    '\n\nGenerado: ' + new Date().toLocaleString('es-AR');
+  const emails = state.contactos.map(c => c.email).join(',');
+  window.location.href = `mailto:${emails}?subject=Alertas Flota Vehicular&body=${encodeURIComponent(body)}`;
+}
+function checkAndShowBanner() {
+  const alerts = getAlertas();
+  const banner = document.getElementById('alertBanner');
+  const danger = alerts.filter(a => a.cls === 'danger').length;
+  const warn = alerts.filter(a => a.cls === 'warn').length;
+  if (danger > 0 || warn > 0) {
+    banner.classList.add('show');
+    document.getElementById('alertText').textContent =
+      `${danger > 0 ? danger + ' vencimiento(s) crítico(s)' : ''}${danger>0&&warn>0?' · ':''}${warn>0?warn+' próximo(s) a vencer':''}. Revisá la sección Alertas.`;
+  } else {
+    banner.classList.remove('show');
+  }
+}
+
+// ===================== DASHBOARD =====================
+function renderDashboard() {
+  renderKmHero();
+  renderAlertasDashboard();
+  renderUltimosRegistros();
+  renderChartKmMes();
+  renderServiciosProximos();
+  checkAndShowBanner();
+}
+function renderKmHero() {
+  const c = document.getElementById('kmHero');
+  if (!state.vehiculos.length) {
+    c.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;padding:20px;gap:12px;color:var(--text3)">
+      Sin vehículos. <button class="btn btn-ghost" onclick="showPage('vehiculos')">Agregar →</button></div>`;
+    return;
+  }
+  c.innerHTML = state.vehiculos.map(v => {
+    const dS = v.seguro ? diffDays(v.seguro) : 9999;
+    const dV = v.vtv ? diffDays(v.vtv) : 9999;
+    const statCls = (dS <= 7 || dV <= 7) ? 'danger' : (dS <= 30 || dV <= 30) ? 'warn' : '';
+    return `<div class="km-card">
+      <div class="plate">${v.patente || 'S/PATENTE'}</div>
+      <div class="label"><span class="status-dot ${statCls}"></span>${v.nombre}</div>
+      <div class="value">${v.km.toLocaleString('es-AR')}</div>
+      <div class="sub">km actuales · ${v.tipo} ${v.modelo || ''}</div>
+      ${v.seguro && dS <= 30 ? `<div style="margin-top:8px">${badgeVenc(dS,'Seguro OK')} Seguro</div>` : ''}
+      ${v.vtv && dV <= 30 ? `<div style="margin-top:4px">${badgeVenc(dV,'VTV OK')} VTV</div>` : ''}
+    </div>`;
+  }).join('');
+}
+function renderAlertasDashboard() {
+  const alerts = getAlertas();
+  const c = document.getElementById('alertasActivas');
+  if (!alerts.length) { c.innerHTML = '<p style="color:var(--accent);font-size:13px"><i class="ti ti-check" style="vertical-align:-2px"></i> Sin alertas activas.</p>'; return; }
+  c.innerHTML = alerts.slice(0, 5).map(a => `
+    <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
+      <i class="ti ${a.icon}" style="color:var(--${a.cls==='danger'?'danger':a.cls==='warn'?'warn':'accent'})" aria-hidden="true"></i>
+      <div style="flex:1;font-size:13px">${a.tipo} — ${a.nombre}</div>
+      <span class="badge ${a.cls}">${a.cls==='danger'?'VENCIDO':'PRÓXIMO'}</span>
+    </div>
+  `).join('') + (alerts.length > 5 ? `<p style="color:var(--text3);font-size:12px;margin-top:8px">+${alerts.length - 5} más → <a href="#" onclick="showPage('alertas');return false" style="color:var(--info)">Ver todas</a></p>` : '');
+}
+function renderUltimosRegistros() {
+  const c = document.getElementById('ultimosRegistros');
+  const regs = [...state.registros].reverse().slice(0, 5);
+  if (!regs.length) { c.innerHTML = '<p style="color:var(--text3);font-size:13px">Sin registros.</p>'; return; }
+  c.innerHTML = regs.map(r => {
+    const kmRec = r.kmRegreso > r.kmSalida ? r.kmRegreso - r.kmSalida : 0;
+    return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
+      <i class="ti ti-route" style="color:var(--info)" aria-hidden="true"></i>
+      <div style="flex:1;font-size:13px">
+        <strong>${getVehiculoNombre(r.vehiculoId)}</strong>
+        <span style="color:var(--text3);font-size:11px;display:block">${getConductorNombre(r.conductorId)} · ${fmtDate(r.fechaSalida)}</span>
+      </div>
+      ${kmRec > 0 ? `<span style="font-family:var(--mono);color:var(--accent);font-size:13px">+${kmRec.toLocaleString()} km</span>` : '<span class="badge warn">En curso</span>'}
+    </div>`;
+  }).join('');
+}
+function renderChartKmMes() {
+  if (kmChart) { kmChart.destroy(); kmChart = null; }
+  const canvas = document.getElementById('chartKmMes');
+  if (!state.registros.length) {
+    canvas.parentElement.innerHTML = '<p style="text-align:center;color:var(--text3);padding:40px">Sin datos de registros.</p>';
+    return;
+  }
+  const mapa = {};
+  state.registros.forEach(r => {
+    if (!r.fechaSalida) return;
+    const key = r.fechaSalida.slice(0, 7);
+    mapa[key] = (mapa[key] || 0) + Math.max(0, (r.kmRegreso || 0) - (r.kmSalida || 0));
+  });
+  const keys = Object.keys(mapa).sort();
+  const labels = keys.map(k => { const [y,m] = k.split('-'); return MESES[parseInt(m)] + ' ' + y; });
+  const data = keys.map(k => mapa[k]);
+  kmChart = new Chart(canvas, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'KM recorridos',
+        data,
+        backgroundColor: 'rgba(0,255,135,0.25)',
+        borderColor: '#00ff87',
+        borderWidth: 2,
+        borderRadius: 6,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#9090a8', font: { family: 'JetBrains Mono' } } },
+        x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#9090a8', font: { family: 'JetBrains Mono' } } }
+      }
+    }
+  });
+}
+function renderServiciosProximos() {
+  const c = document.getElementById('serviciosProximos');
+  const alerts = getAlertas().filter(a => a.tipo.startsWith('Servicio'));
+  if (!alerts.length) { c.innerHTML = '<p style="color:var(--accent);font-size:13px"><i class="ti ti-check" style="vertical-align:-2px"></i> Sin servicios próximos.</p>'; return; }
+  c.innerHTML = alerts.map(a => `
+    <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
+      <i class="ti ti-tool" style="color:var(--warn)" aria-hidden="true"></i>
+      <div style="flex:1;font-size:13px"><strong>${a.tipo}</strong><span style="color:var(--text3);display:block;font-size:11px">${a.nombre}</span></div>
+      <span class="badge ${a.cls}">${a.cls==='danger'?'VENCIDO':'PRÓXIMO'}</span>
+    </div>
+  `).join('');
+}
+
+// ===================== REPORTES / PDF =====================
+function poblarSelectsReporte() {
+  const s = document.getElementById('repVehiculo');
+  s.innerHTML = '<option value="">Todos los vehículos</option>' +
+    state.vehiculos.map(v => `<option value="${v.id}">${v.nombre} (${v.patente||'s/p'})</option>`).join('');
+  document.getElementById('repAnio').value = new Date().getFullYear();
+}
+function filtrarDatosReporte() {
+  const vId = document.getElementById('repVehiculo').value;
+  const anio = parseInt(document.getElementById('repAnio').value);
+  const mes = parseInt(document.getElementById('repMes').value);
+  let regs = state.registros.filter(r => {
+    if (!r.fechaSalida) return false;
+    const d = new Date(r.fechaSalida);
+    if (vId && r.vehiculoId !== vId) return false;
+    if (d.getFullYear() !== anio) return false;
+    if (mes > 0 && (d.getMonth() + 1) !== mes) return false;
+    return true;
+  });
+  let servs = state.servicios.filter(s => {
+    if (!s.fecha) return false;
+    const d = new Date(s.fecha);
+    if (vId && s.vehiculoId !== vId) return false;
+    if (d.getFullYear() !== anio) return false;
+    if (mes > 0 && (d.getMonth() + 1) !== mes) return false;
+    return true;
+  });
+  return { regs, servs, anio, mes, vId };
+}
+function previstaReporte() {
+  const { regs, servs, anio, mes, vId } = filtrarDatosReporte();
+  const empresa = document.getElementById('repEmpresa').value || 'EMPRESA';
+  const kmTotal = regs.reduce((s, r) => s + Math.max(0, r.kmRegreso - r.kmSalida), 0);
+  const costoTotal = servs.reduce((s, sv) => s + (sv.costo || 0), 0);
+  const vehiculoLabel = vId ? getVehiculoNombre(vId) : 'Todos los vehículos';
+  const periodoLabel = mes > 0 ? `${MESES[mes]} ${anio}` : `Año ${anio}`;
+  const previstaHTML = `
+    <div style="border:1px solid var(--border);border-radius:var(--radius);padding:24px;background:var(--bg3)">
+      <div style="text-align:center;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--border)">
+        <p style="font-size:11px;color:var(--text3);letter-spacing:2px;text-transform:uppercase">REPORTE DE FLOTA VEHICULAR</p>
+        <p style="font-size:20px;font-weight:800;margin:8px 0">${empresa}</p>
+        <p style="color:var(--text2)">${vehiculoLabel} · ${periodoLabel}</p>
+        <p style="font-size:12px;color:var(--text3)">Generado: ${new Date().toLocaleString('es-AR')}</p>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px">
+        <div style="background:var(--bg4);border-radius:8px;padding:14px;text-align:center">
+          <p style="font-size:11px;color:var(--text3);letter-spacing:1px;text-transform:uppercase">KM TOTALES</p>
+          <p style="font-family:var(--mono);font-size:24px;color:var(--accent);margin-top:6px">${kmTotal.toLocaleString('es-AR')}</p>
+        </div>
+        <div style="background:var(--bg4);border-radius:8px;padding:14px;text-align:center">
+          <p style="font-size:11px;color:var(--text3);letter-spacing:1px;text-transform:uppercase">VIAJES</p>
+          <p style="font-family:var(--mono);font-size:24px;color:var(--info);margin-top:6px">${regs.length}</p>
+        </div>
+        <div style="background:var(--bg4);border-radius:8px;padding:14px;text-align:center">
+          <p style="font-size:11px;color:var(--text3);letter-spacing:1px;text-transform:uppercase">COSTO SERVICIOS</p>
+          <p style="font-family:var(--mono);font-size:24px;color:var(--warn);margin-top:6px">$${costoTotal.toLocaleString('es-AR')}</p>
+        </div>
+      </div>
+      <p style="font-weight:700;margin-bottom:10px">Registros de KM</p>
+      ${regs.length ? `<div class="table-wrap"><table style="font-size:12px">
+        <thead><tr><th>Vehículo</th><th>Conductor</th><th>Salida</th><th>Regreso</th><th>KM Recorridos</th><th>Destino</th></tr></thead>
+        <tbody>${regs.map(r=>`<tr>
+          <td>${getVehiculoNombre(r.vehiculoId)}</td>
+          <td>${getConductorNombre(r.conductorId)}</td>
+          <td>${fmtDateTime(r.fechaSalida)}</td>
+          <td>${r.fechaRegreso?fmtDateTime(r.fechaRegreso):'—'}</td>
+          <td style="font-family:var(--mono);color:var(--accent)">+${Math.max(0,r.kmRegreso-r.kmSalida).toLocaleString()}</td>
+          <td>${r.destino||'—'}</td>
+        </tr>`).join('')}</tbody>
+      </table></div>` : '<p style="color:var(--text3);font-size:13px">Sin registros.</p>'}
+      ${servs.length ? `<p style="font-weight:700;margin:20px 0 10px">Servicios</p>
+      <div class="table-wrap"><table style="font-size:12px">
+        <thead><tr><th>Vehículo</th><th>Servicio</th><th>Fecha</th><th>KM</th><th>Costo</th><th>Proveedor</th></tr></thead>
+        <tbody>${servs.map(s=>`<tr>
+          <td>${getVehiculoNombre(s.vehiculoId)}</td>
+          <td>${s.tipo}</td>
+          <td>${fmtDate(s.fecha)}</td>
+          <td style="font-family:var(--mono)">${s.km.toLocaleString()}</td>
+          <td style="font-family:var(--mono)">$${(s.costo||0).toLocaleString()}</td>
+          <td>${s.proveedor||'—'}</td>
+        </tr>`).join('')}</tbody>
+      </table></div>` : ''}
+    </div>
+  `;
+  document.getElementById('previstaContenido').innerHTML = previstaHTML;
+  document.getElementById('previstaCard').style.display = 'block';
+  document.getElementById('previstaCard').scrollIntoView({ behavior: 'smooth' });
+}
+function generarPDF() {
+  const { regs, servs, anio, mes, vId } = filtrarDatosReporte();
+  const empresa = document.getElementById('repEmpresa').value || 'EMPRESA';
+  const kmTotal = regs.reduce((s, r) => s + Math.max(0, r.kmRegreso - r.kmSalida), 0);
+  const costoTotal = servs.reduce((s, sv) => s + (sv.costo || 0), 0);
+  const vehiculoLabel = vId ? getVehiculoNombre(vId) : 'Todos los vehículos';
+  const periodoLabel = mes > 0 ? `${MESES[mes]} ${anio}` : `Año ${anio}`;
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+  const pw = 210; const ph = 297;
+  let y = 15;
+  // Header
+  doc.setFillColor(10, 10, 15);
+  doc.rect(0, 0, pw, 40, 'F');
+  doc.setTextColor(0, 255, 135);
+  doc.setFontSize(18); doc.setFont('helvetica', 'bold');
+  doc.text('FlotaControl', 14, y + 8);
+  doc.setFontSize(10); doc.setTextColor(200, 200, 200);
+  doc.text('REPORTE DE FLOTA VEHICULAR', 14, y + 18);
+  doc.setFontSize(9); doc.setTextColor(150, 150, 160);
+  doc.text(empresa, 14, y + 26);
+  doc.text(`${vehiculoLabel} · ${periodoLabel}`, 14, y + 32);
+  doc.text('Generado: ' + new Date().toLocaleString('es-AR'), pw - 14, y + 32, { align: 'right' });
+  y = 50;
+  // Métricas
+  const cols = [14, 80, 146];
+  const blocks = [
+    ['KM TOTALES', kmTotal.toLocaleString('es-AR') + ' km'],
+    ['VIAJES REGISTRADOS', regs.length.toString()],
+    ['COSTO SERVICIOS', '$' + costoTotal.toLocaleString('es-AR')],
+  ];
+  blocks.forEach((b, i) => {
+    doc.setFillColor(30, 30, 40);
+    doc.roundedRect(cols[i], y, 58, 20, 3, 3, 'F');
+    doc.setFontSize(8); doc.setTextColor(150, 150, 160); doc.setFont('helvetica', 'normal');
+    doc.text(b[0], cols[i] + 4, y + 7);
+    doc.setFontSize(14); doc.setTextColor(0, 200, 100); doc.setFont('helvetica', 'bold');
+    doc.text(b[1], cols[i] + 4, y + 16);
+  });
+  y += 30;
+  // Registros KM
+  doc.setFontSize(11); doc.setTextColor(240, 240, 248); doc.setFont('helvetica', 'bold');
+  doc.text('Registros de Kilómetros', 14, y); y += 6;
+  doc.setDrawColor(50, 50, 65);
+  doc.line(14, y, pw - 14, y); y += 4;
+  const hdrReg = ['Vehículo', 'Conductor', 'Fecha Salida', 'KM Recorridos', 'Destino'];
+  const colW = [42, 35, 35, 28, 46];
+  doc.setFontSize(8); doc.setTextColor(130, 130, 150); doc.setFont('helvetica', 'normal');
+  let cx = 14;
+  hdrReg.forEach((h, i) => { doc.text(h, cx, y); cx += colW[i]; }); y += 5;
+  doc.line(14, y, pw - 14, y); y += 2;
+  doc.setTextColor(220, 220, 230);
+  regs.forEach(r => {
+    if (y > ph - 30) { doc.addPage(); y = 15; }
+    cx = 14;
+    const kmRec = Math.max(0, r.kmRegreso - r.kmSalida);
+    const rowData = [
+      getVehiculoNombre(r.vehiculoId).slice(0, 22),
+      getConductorNombre(r.conductorId).slice(0, 18),
+      fmtDate(r.fechaSalida),
+      '+' + kmRec.toLocaleString('es-AR') + ' km',
+      (r.destino || '—').slice(0, 24),
+    ];
+    rowData.forEach((d, i) => { doc.text(d, cx, y); cx += colW[i]; });
+    y += 5;
+    doc.setDrawColor(30, 30, 40); doc.line(14, y - 2, pw - 14, y - 2);
+  });
+  if (!regs.length) { doc.setTextColor(100,100,120); doc.text('Sin registros para el período.', 14, y); y += 8; }
+  y += 6;
+  // Servicios
+  if (servs.length) {
+    if (y > ph - 40) { doc.addPage(); y = 15; }
+    doc.setFontSize(11); doc.setTextColor(240, 240, 248); doc.setFont('helvetica', 'bold');
+    doc.text('Servicios y Mantenimiento', 14, y); y += 6;
+    doc.setDrawColor(50, 50, 65); doc.line(14, y, pw - 14, y); y += 4;
+    const hdrServ = ['Vehículo', 'Servicio', 'Fecha', 'KM', 'Costo', 'Proveedor'];
+    const colWS = [40, 40, 22, 20, 22, 42];
+    doc.setFontSize(8); doc.setTextColor(130, 130, 150); doc.setFont('helvetica', 'normal');
+    cx = 14;
+    hdrServ.forEach((h, i) => { doc.text(h, cx, y); cx += colWS[i]; }); y += 5;
+    doc.line(14, y, pw - 14, y); y += 2;
+    doc.setTextColor(220, 220, 230);
+    servs.forEach(s => {
+      if (y > ph - 30) { doc.addPage(); y = 15; }
+      cx = 14;
+      const rowData = [
+        getVehiculoNombre(s.vehiculoId).slice(0,20),
+        s.tipo.slice(0,22),
+        fmtDate(s.fecha),
+        s.km.toLocaleString(),
+        '$' + (s.costo||0).toLocaleString(),
+        (s.proveedor||'—').slice(0,20),
+      ];
+      rowData.forEach((d, i) => { doc.text(d, cx, y); cx += colWS[i]; });
+      y += 5; doc.line(14, y-2, pw-14, y-2);
+    });
+  }
+  // Footer
+  const totalPages = doc.internal.getNumberOfPages();
+  for (let i = 1; i <= totalPages; i++) {
+    doc.setPage(i);
+    doc.setFillColor(10, 10, 15);
+    doc.rect(0, ph - 12, pw, 12, 'F');
+    doc.setFontSize(8); doc.setTextColor(100, 100, 120);
+    doc.text(`FlotaControl · ${empresa}`, 14, ph - 5);
+    doc.text(`Página ${i} de ${totalPages}`, pw - 14, ph - 5, { align: 'right' });
+  }
+  const filename = `reporte-flota-${periodoLabel.replace(/ /g,'-')}-${new Date().toISOString().slice(0,10)}.pdf`;
+  doc.save(filename);
+  showToast('PDF generado: ' + filename, 'ok');
+}
+
+// ===================== RENDER ALL =====================
+function renderAll() {
+  renderTablaVehiculos();
+  renderTablaConductores();
+  renderTablaRegistros();
+  renderTablaServicios();
+  checkAndShowBanner();
+}
+
+// ===================== INIT =====================
+(function init() {
+  loadState();
+  renderDashboard();
+  // Poblar selects iniciales
+  if (document.getElementById('filtroVehiculo')) {
+    poblarSelectsRegistro();
+    poblarSelectsServicio();
+    poblarSelectsReporte();
+  }
+})();
+</script>
+</body>
+</html>
