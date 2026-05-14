@@ -516,27 +516,54 @@
     Registro de <span>Kilómetros</span>
   </div>
 
-  <div class="card">
-    <div class="card-title"><i class="ti ti-plus" aria-hidden="true"></i>Nuevo Registro</div>
+  <!-- PASO 1: SALIDA -->
+  <div class="card" id="cardSalida">
+    <div class="card-title"><i class="ti ti-car-off" aria-hidden="true"></i>Paso 1 — Registrar Salida</div>
     <div class="form-grid">
       <div class="form-group">
         <label>Vehículo</label>
-        <select id="rVehiculo"></select>
+        <select id="rVehiculo" onchange="autocompletarKmSalida()"></select>
       </div>
       <div class="form-group">
         <label>Conductor</label>
         <select id="rConductor"></select>
       </div>
       <div class="form-group">
-        <label>Fecha y Hora Salida</label>
+        <label>Fecha y Hora de Salida</label>
         <input type="datetime-local" id="rFechaSalida">
       </div>
       <div class="form-group">
-        <label>KM al Salir</label>
+        <label>KM al Salir <span style="color:var(--accent);font-size:10px">(auto-completado)</span></label>
         <input type="number" id="rKmSalida" placeholder="0" min="0">
       </div>
+      <div class="form-group" style="grid-column:span 2">
+        <label>Destino / Motivo</label>
+        <input type="text" id="rDestino" placeholder="Visita cliente, entrega mercadería...">
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="registrarSalida()">
+        <i class="ti ti-car" aria-hidden="true"></i>Registrar Salida
+      </button>
+      <button class="btn btn-ghost" onclick="limpiarFormRegistro()">
+        <i class="ti ti-x" aria-hidden="true"></i>Limpiar
+      </button>
+    </div>
+  </div>
+
+  <!-- PASO 2: REGRESO — se activa al seleccionar un viaje en curso desde la tabla -->
+  <div class="card" id="cardRegreso" style="display:none;border-color:rgba(0,255,135,0.3)">
+    <div class="card-title" style="color:var(--accent)"><i class="ti ti-flag-check" aria-hidden="true"></i>Paso 2 — Registrar Regreso</div>
+    <div style="background:var(--bg3);border-radius:var(--radius);padding:12px 16px;margin-bottom:16px;font-size:13px;display:flex;gap:16px;flex-wrap:wrap">
+      <span style="color:var(--text3)">Vehículo:</span> <strong id="rRegresoVeh">—</strong>
+      <span style="color:var(--text3)">Conductor:</span> <strong id="rRegresoCond">—</strong>
+      <span style="color:var(--text3)">Salida:</span> <strong id="rRegresoSalida">—</strong>
+      <span style="color:var(--text3)">KM Salida:</span> <strong id="rRegresoKmS" style="font-family:var(--mono);color:var(--accent)">—</strong>
+    </div>
+    <input type="hidden" id="rRegresoId">
+    <div class="form-grid">
       <div class="form-group">
-        <label>Fecha y Hora Regreso</label>
+        <label>Fecha y Hora de Regreso</label>
         <input type="datetime-local" id="rFechaRegreso">
       </div>
       <div class="form-group">
@@ -544,20 +571,16 @@
         <input type="number" id="rKmRegreso" placeholder="0" min="0">
       </div>
       <div class="form-group" style="grid-column:span 2">
-        <label>Destino / Motivo</label>
-        <input type="text" id="rDestino" placeholder="Visita cliente, entrega mercadería...">
-      </div>
-      <div class="form-group" style="grid-column:span 2">
-        <label>Observaciones</label>
-        <textarea id="rObs" placeholder="Novedades del viaje..."></textarea>
+        <label>Observaciones del viaje</label>
+        <textarea id="rObs" placeholder="Novedades, incidentes, combustible..."></textarea>
       </div>
     </div>
     <div class="btn-row">
-      <button class="btn btn-primary" onclick="guardarRegistro()">
-        <i class="ti ti-device-floppy" aria-hidden="true"></i>Registrar
+      <button class="btn btn-primary" onclick="registrarRegreso()">
+        <i class="ti ti-device-floppy" aria-hidden="true"></i>Confirmar Regreso
       </button>
-      <button class="btn btn-ghost" onclick="limpiarFormRegistro()">
-        <i class="ti ti-x" aria-hidden="true"></i>Limpiar
+      <button class="btn btn-ghost" onclick="cancelarRegreso()">
+        <i class="ti ti-x" aria-hidden="true"></i>Cancelar
       </button>
     </div>
   </div>
@@ -585,7 +608,7 @@
         <thead>
           <tr>
             <th>Vehículo</th><th>Conductor</th><th>Salida</th><th>Regreso</th>
-            <th>KM Salida</th><th>KM Regreso</th><th>KM Recorridos</th><th>Destino</th><th>Acciones</th>
+            <th>KM Salida</th><th>KM Regreso</th><th>KM Recorridos</th><th>Destino</th><th>Estado / Acción</th>
           </tr>
         </thead>
         <tbody id="tablaRegistros"></tbody>
@@ -1134,67 +1157,154 @@ function poblarSelectsRegistro() {
   sveh.innerHTML = state.vehiculos.map(v => `<option value="${v.id}">${v.nombre} (${v.patente||'s/p'})</option>`).join('') || '<option>Sin vehículos</option>';
   sveh2.innerHTML = '<option value="">Todos</option>' + state.vehiculos.map(v => `<option value="${v.id}">${v.nombre}</option>`).join('');
   sCond.innerHTML = '<option value="">Sin conductor / Pendiente</option>' + state.conductores.map(c => `<option value="${c.id}">${c.nombre}</option>`).join('');
-  // Default fecha salida = ahora
   const now = new Date();
-  const local = now.toISOString().slice(0,16);
-  document.getElementById('rFechaSalida').value = local;
+  document.getElementById('rFechaSalida').value = now.toISOString().slice(0,16);
+  autocompletarKmSalida();
 }
-function guardarRegistro() {
+
+function autocompletarKmSalida() {
   const vId = document.getElementById('rVehiculo').value;
-  const kmS = parseInt(document.getElementById('rKmSalida').value) || 0;
-  const kmR = parseInt(document.getElementById('rKmRegreso').value) || 0;
+  if (!vId) return;
+  // Buscar el KM más alto registrado para este vehículo (regreso de viajes completados)
+  const regsCompletados = state.registros.filter(r => r.vehiculoId === vId && r.completado && r.kmRegreso > 0);
+  let kmAuto = 0;
+  if (regsCompletados.length > 0) {
+    kmAuto = Math.max(...regsCompletados.map(r => r.kmRegreso));
+  } else {
+    // Si no hay registros, tomar el KM base del vehículo
+    const v = getVehiculo(vId);
+    if (v) kmAuto = v.km;
+  }
+  document.getElementById('rKmSalida').value = kmAuto > 0 ? kmAuto : '';
+}
+
+function registrarSalida() {
+  const vId = document.getElementById('rVehiculo').value;
   if (!vId) { showToast('Seleccioná un vehículo', 'warn'); return; }
+  // Verificar que no haya un viaje "en curso" para este vehículo
+  const enCurso = state.registros.find(r => r.vehiculoId === vId && !r.completado);
+  if (enCurso) { showToast('Este vehículo ya tiene un viaje en curso. Registrá el regreso primero.', 'warn'); return; }
+  const kmS = parseInt(document.getElementById('rKmSalida').value) || 0;
   const r = {
     id: uid(),
     vehiculoId: vId,
     conductorId: document.getElementById('rConductor').value,
     fechaSalida: document.getElementById('rFechaSalida').value,
-    fechaRegreso: document.getElementById('rFechaRegreso').value,
+    fechaRegreso: '',
     kmSalida: kmS,
-    kmRegreso: kmR,
+    kmRegreso: 0,
     destino: document.getElementById('rDestino').value.trim(),
-    obs: document.getElementById('rObs').value.trim(),
+    obs: '',
+    completado: false,
     fecha: new Date().toISOString(),
   };
   state.registros.push(r);
-  // Actualizar km del vehículo si es mayor
-  const v = getVehiculo(vId);
-  if (v && kmR > v.km) { v.km = kmR; }
   saveState(); limpiarFormRegistro(); renderTablaRegistros();
-  showToast('Registro guardado', 'ok');
+  showToast('Salida registrada. Cuando el vehículo regrese, presioná "Registrar Regreso" en la tabla.', 'ok');
 }
+
+function abrirRegreso(id) {
+  const r = state.registros.find(x => x.id === id);
+  if (!r) return;
+  document.getElementById('rRegresoId').value = id;
+  document.getElementById('rRegresoVeh').textContent = getVehiculoNombre(r.vehiculoId);
+  document.getElementById('rRegresoCond').textContent = getConductorNombre(r.conductorId);
+  document.getElementById('rRegresoSalida').textContent = fmtDateTime(r.fechaSalida);
+  document.getElementById('rRegresoKmS').textContent = r.kmSalida.toLocaleString('es-AR') + ' km';
+  const now = new Date();
+  document.getElementById('rFechaRegreso').value = now.toISOString().slice(0,16);
+  document.getElementById('rKmRegreso').value = '';
+  document.getElementById('rObs').value = r.obs || '';
+  document.getElementById('cardRegreso').style.display = 'block';
+  document.getElementById('cardSalida').style.display = 'none';
+  document.getElementById('cardRegreso').scrollIntoView({ behavior: 'smooth' });
+}
+
+function registrarRegreso() {
+  const id = document.getElementById('rRegresoId').value;
+  const kmR = parseInt(document.getElementById('rKmRegreso').value) || 0;
+  const fechaR = document.getElementById('rFechaRegreso').value;
+  if (!fechaR) { showToast('Ingresá la fecha y hora de regreso', 'warn'); return; }
+  if (kmR === 0) { showToast('Ingresá los KM al regresar', 'warn'); return; }
+  const idx = state.registros.findIndex(r => r.id === id);
+  if (idx === -1) return;
+  const r = state.registros[idx];
+  if (new Date(fechaR) <= new Date(r.fechaSalida)) {
+    showToast('El regreso (' + fmtDateTime(fechaR) + ') no puede ser anterior o igual a la salida (' + fmtDateTime(r.fechaSalida) + ')', 'danger');
+    document.getElementById('rFechaRegreso').style.boxShadow = '0 0 0 2px var(--danger)';
+    setTimeout(() => document.getElementById('rFechaRegreso').style.boxShadow = '', 2500);
+    return;
+  }
+  if (kmR < r.kmSalida) { showToast('Los KM de regreso no pueden ser menores a los de salida', 'warn'); return; }
+  r.fechaRegreso = fechaR;
+  r.kmRegreso = kmR;
+  r.obs = document.getElementById('rObs').value.trim();
+  r.completado = true;
+  // Actualizar KM del vehículo
+  const v = getVehiculo(r.vehiculoId);
+  if (v && kmR > v.km) { v.km = kmR; }
+  saveState(); cancelarRegreso(); renderTablaRegistros();
+  showToast('Regreso registrado. KM del vehículo actualizados.', 'ok');
+}
+
+function cancelarRegreso() {
+  document.getElementById('cardRegreso').style.display = 'none';
+  document.getElementById('cardSalida').style.display = 'block';
+  document.getElementById('rRegresoId').value = '';
+}
+
 function limpiarFormRegistro() {
-  ['rKmSalida','rKmRegreso','rFechaRegreso','rDestino','rObs'].forEach(id => document.getElementById(id).value = '');
+  ['rKmSalida','rDestino'].forEach(id => document.getElementById(id).value = '');
+  const now = new Date();
+  document.getElementById('rFechaSalida').value = now.toISOString().slice(0,16);
+  autocompletarKmSalida();
 }
+
 function eliminarRegistro(id) {
   confirm('¿Eliminar este registro?', () => {
     state.registros = state.registros.filter(r => r.id !== id);
     saveState(); renderTablaRegistros(); showToast('Registro eliminado', 'danger');
   });
 }
+
 function renderTablaRegistros() {
   const tbody = document.getElementById('tablaRegistros');
   const filtroV = document.getElementById('filtroVehiculo').value;
   const filtroM = document.getElementById('filtroMes').value;
-  let regs = [...state.registros].reverse();
-  if (filtroV) regs = regs.filter(r => r.vehiculoId === filtroV);
-  if (filtroM) regs = regs.filter(r => r.fechaSalida && r.fechaSalida.startsWith(filtroM));
+  // Separar: primero los en curso, luego los completados ordenados por fecha desc
+  let enCurso = state.registros.filter(r => !r.completado);
+  let completados = state.registros.filter(r => r.completado).reverse();
+  if (filtroV) {
+    enCurso = enCurso.filter(r => r.vehiculoId === filtroV);
+    completados = completados.filter(r => r.vehiculoId === filtroV);
+  }
+  if (filtroM) {
+    enCurso = enCurso.filter(r => r.fechaSalida && r.fechaSalida.startsWith(filtroM));
+    completados = completados.filter(r => r.fechaSalida && r.fechaSalida.startsWith(filtroM));
+  }
+  const regs = [...enCurso, ...completados];
   if (!regs.length) {
     tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--text3);">Sin registros.</td></tr>';
     return;
   }
   tbody.innerHTML = regs.map(r => {
-    const kmRec = r.kmRegreso > 0 ? r.kmRegreso - r.kmSalida : 0;
-    return `<tr>
+    const kmRec = r.completado && r.kmRegreso > r.kmSalida ? r.kmRegreso - r.kmSalida : 0;
+    const enCursoRow = !r.completado;
+    return `<tr style="${enCursoRow ? 'background:rgba(255,179,71,0.04)' : ''}">
       <td><strong>${getVehiculoNombre(r.vehiculoId)}</strong></td>
       <td>${getConductorNombre(r.conductorId)}</td>
       <td style="font-family:var(--mono);font-size:12px">${fmtDateTime(r.fechaSalida)}</td>
-      <td style="font-family:var(--mono);font-size:12px">${r.fechaRegreso ? fmtDateTime(r.fechaRegreso) : '<span class="badge warn">En curso</span>'}</td>
+      <td style="font-family:var(--mono);font-size:12px">${r.completado ? fmtDateTime(r.fechaRegreso) : '<span class="badge warn">En curso</span>'}</td>
       <td style="font-family:var(--mono)">${r.kmSalida.toLocaleString('es-AR')}</td>
-      <td style="font-family:var(--mono)">${r.kmRegreso > 0 ? r.kmRegreso.toLocaleString('es-AR') : '—'}</td>
-      <td><span style="font-family:var(--mono);color:var(--accent)">${kmRec > 0 ? '+' + kmRec.toLocaleString('es-AR') : '—'}</span></td>
-      <td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.destino || '—'}</td>
-      <td><button class="btn btn-danger btn-sm" onclick="eliminarRegistro('${r.id}')"><i class="ti ti-trash"></i></button></td>
+      <td style="font-family:var(--mono)">${r.completado ? r.kmRegreso.toLocaleString('es-AR') : '—'}</td>
+      <td>${r.completado ? `<span style="font-family:var(--mono);color:var(--accent)">+${kmRec.toLocaleString('es-AR')} km</span>` : '—'}</td>
+      <td style="max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.destino || '—'}</td>
+      <td>
+        <div style="display:flex;gap:4px">
+          ${enCursoRow ? `<button class="btn btn-primary btn-sm" onclick="abrirRegreso('${r.id}')"><i class="ti ti-flag-check"></i> Regreso</button>` : '<span class="badge ok">Completado</span>'}
+          <button class="btn btn-danger btn-sm" onclick="eliminarRegistro('${r.id}')"><i class="ti ti-trash"></i></button>
+        </div>
+      </td>
     </tr>`;
   }).join('');
 }
@@ -1435,14 +1545,14 @@ function renderUltimosRegistros() {
   const regs = [...state.registros].reverse().slice(0, 5);
   if (!regs.length) { c.innerHTML = '<p style="color:var(--text3);font-size:13px">Sin registros.</p>'; return; }
   c.innerHTML = regs.map(r => {
-    const kmRec = r.kmRegreso > r.kmSalida ? r.kmRegreso - r.kmSalida : 0;
+    const kmRec = r.completado && r.kmRegreso > r.kmSalida ? r.kmRegreso - r.kmSalida : 0;
     return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
       <i class="ti ti-route" style="color:var(--info)" aria-hidden="true"></i>
       <div style="flex:1;font-size:13px">
         <strong>${getVehiculoNombre(r.vehiculoId)}</strong>
         <span style="color:var(--text3);font-size:11px;display:block">${getConductorNombre(r.conductorId)} · ${fmtDate(r.fechaSalida)}</span>
       </div>
-      ${kmRec > 0 ? `<span style="font-family:var(--mono);color:var(--accent);font-size:13px">+${kmRec.toLocaleString()} km</span>` : '<span class="badge warn">En curso</span>'}
+      ${r.completado ? `<span style="font-family:var(--mono);color:var(--accent);font-size:13px">+${kmRec.toLocaleString()} km</span>` : '<span class="badge warn">En curso</span>'}
     </div>`;
   }).join('');
 }
