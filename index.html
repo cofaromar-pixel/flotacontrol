@@ -268,9 +268,101 @@
   ::-webkit-scrollbar { width: 6px; }
   ::-webkit-scrollbar-track { background: var(--bg); }
   ::-webkit-scrollbar-thumb { background: var(--bg4); border-radius: 3px; }
+
+  /* ===== LOGIN SCREEN ===== */
+  #loginScreen {
+    position: fixed; inset: 0; z-index: 99999;
+    background: var(--bg);
+    display: flex; align-items: center; justify-content: center;
+  }
+  #loginScreen.hidden { display: none; }
+  .login-box {
+    background: var(--bg2); border: 1px solid var(--border2);
+    border-radius: 20px; padding: 40px 44px; width: 100%; max-width: 400px;
+    box-shadow: 0 32px 80px rgba(0,0,0,0.7);
+    display: flex; flex-direction: column; align-items: center; gap: 0;
+  }
+  .login-logo-mark {
+    width: 52px; height: 52px; border-radius: 14px;
+    background: var(--accent); display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 0 32px rgba(0,255,135,0.45); margin-bottom: 18px;
+  }
+  .login-logo-mark i { color: #000; font-size: 28px; }
+  .login-title { font-size: 26px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 4px; }
+  .login-title span { color: var(--accent); }
+  .login-sub { font-size: 13px; color: var(--text3); margin-bottom: 32px; }
+  .login-field { width: 100%; margin-bottom: 14px; }
+  .login-field label {
+    display: block; font-size: 11px; font-weight: 600; color: var(--text3);
+    letter-spacing: 1.2px; text-transform: uppercase; margin-bottom: 6px;
+  }
+  .login-field input {
+    width: 100%; background: var(--bg3); border: 1px solid var(--border);
+    border-radius: 10px; color: var(--text); font-family: var(--sans);
+    font-size: 14px; padding: 11px 14px; outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .login-field input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0,255,135,0.12); }
+  .login-field input.error { border-color: var(--danger); box-shadow: 0 0 0 3px rgba(255,85,85,0.12); }
+  .login-btn {
+    width: 100%; margin-top: 8px; padding: 12px;
+    background: var(--accent); color: #000; border: none; border-radius: 10px;
+    font-family: var(--sans); font-size: 14px; font-weight: 700; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    transition: background 0.15s, box-shadow 0.15s;
+  }
+  .login-btn:hover { background: var(--accent2); box-shadow: 0 0 24px rgba(0,255,135,0.35); }
+  .login-btn i { font-size: 18px; }
+  .login-error {
+    width: 100%; margin-top: 12px; padding: 10px 14px;
+    background: var(--danger-dim); border: 1px solid rgba(255,85,85,0.25);
+    border-radius: 8px; color: var(--danger); font-size: 13px;
+    text-align: center; display: none;
+  }
+  .login-error.show { display: block; }
+  .login-footer { margin-top: 28px; font-size: 11px; color: var(--text3); text-align: center; }
+  /* Shake animation on wrong password */
+  @keyframes shake {
+    0%,100%{transform:translateX(0)} 20%{transform:translateX(-8px)} 40%{transform:translateX(8px)} 60%{transform:translateX(-6px)} 80%{transform:translateX(6px)}
+  }
+  .shake { animation: shake 0.4s ease; }
+  /* Botón logout en header */
+  #btnLogout {
+    padding: 7px 14px; border-radius: 8px; border: 1px solid rgba(255,85,85,0.3);
+    background: var(--danger-dim); color: var(--danger); cursor: pointer;
+    font-family: var(--sans); font-size: 13px; font-weight: 500;
+    display: flex; align-items: center; gap: 6px; transition: all 0.15s;
+  }
+  #btnLogout:hover { background: rgba(255,85,85,0.22); }
+  #btnLogout i { font-size: 16px; }
 </style>
 </head>
 <body>
+
+<!-- ===== LOGIN SCREEN ===== -->
+<div id="loginScreen">
+  <div class="login-box" id="loginBox">
+    <div class="login-logo-mark"><i class="ti ti-car" aria-hidden="true"></i></div>
+    <div class="login-title">Flota<span>Control</span></div>
+    <div class="login-sub">Sistema de Gestión de Flota Vehicular</div>
+    <div class="login-field">
+      <label>Usuario</label>
+      <input type="text" id="loginUser" placeholder="Ingresá tu usuario" autocomplete="username" onkeydown="if(event.key==='Enter')document.getElementById('loginPass').focus()">
+    </div>
+    <div class="login-field">
+      <label>Contraseña</label>
+      <input type="password" id="loginPass" placeholder="Ingresá tu contraseña" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <button class="login-btn" onclick="doLogin()">
+      <i class="ti ti-login" aria-hidden="true"></i>Ingresar
+    </button>
+    <div class="login-error" id="loginError">
+      <i class="ti ti-alert-circle" style="vertical-align:-2px;margin-right:4px"></i>Usuario o contraseña incorrectos
+    </div>
+    <div class="login-footer">FlotaControl &copy; 2026 &mdash; Acceso restringido</div>
+  </div>
+</div>
+
 
 <!-- HEADER -->
 <header>
@@ -305,6 +397,10 @@
     </button>
     <button class="btn-ghost" onclick="triggerImport()" title="Importar datos">
       <i class="ti ti-download" aria-hidden="true"></i>
+    </button>
+    
+    <button id="btnLogout" onclick="doLogout()" title="Cerrar sesión">
+      <i class="ti ti-logout" aria-hidden="true"></i>Salir
     </button>
     <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)">
   </nav>
@@ -1818,7 +1914,53 @@ function renderAll() {
 }
 
 // ===================== INIT =====================
+
+// ===================== LOGIN =====================
+const CREDENTIALS = { user: 'admin', pass: 'ies21' };
+const SESSION_KEY = 'flotaSession';
+
+function isLoggedIn() {
+  return sessionStorage.getItem(SESSION_KEY) === 'ok';
+}
+function doLogin() {
+  const u = document.getElementById('loginUser').value.trim();
+  const p = document.getElementById('loginPass').value;
+  const userInput = document.getElementById('loginUser');
+  const passInput = document.getElementById('loginPass');
+  const errBox = document.getElementById('loginError');
+  const box = document.getElementById('loginBox');
+  if (u === CREDENTIALS.user && p === CREDENTIALS.pass) {
+    sessionStorage.setItem(SESSION_KEY, 'ok');
+    document.getElementById('loginScreen').classList.add('hidden');
+    errBox.classList.remove('show');
+  } else {
+    errBox.classList.add('show');
+    userInput.classList.add('error');
+    passInput.classList.add('error');
+    box.style.animation = 'none';
+    void box.offsetWidth; // reflow
+    box.style.animation = 'shake 0.4s ease';
+    passInput.value = '';
+    setTimeout(() => {
+      userInput.classList.remove('error');
+      passInput.classList.remove('error');
+    }, 1500);
+  }
+}
+function doLogout() {
+  sessionStorage.removeItem(SESSION_KEY);
+  document.getElementById('loginUser').value = '';
+  document.getElementById('loginPass').value = '';
+  document.getElementById('loginError').classList.remove('show');
+  document.getElementById('loginScreen').classList.remove('hidden');
+}
+
 (function init() {
+  if (!isLoggedIn()) {
+    document.getElementById('loginScreen').classList.remove('hidden');
+  } else {
+    document.getElementById('loginScreen').classList.add('hidden');
+  }
   loadState();
   renderDashboard();
   // Poblar selects iniciales
