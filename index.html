@@ -338,31 +338,157 @@
 
   /* ===== MODO CLARO ===== */
   html.light {
-    --bg: #f0f2f5;
+    /* Fondo general: gris azulado suave — contrasta con las cards blancas */
+    --bg: #dde3ec;
+    /* Cards / paneles principales: blanco puro — saltan sobre el fondo */
     --bg2: #ffffff;
-    --bg3: #e8eaed;
-    --bg4: #d8dbe0;
-    --border: rgba(0,0,0,0.09);
-    --border2: rgba(0,0,0,0.16);
-    --text: #111118;
-    --text2: #4a4a62;
-    --text3: #8888a0;
-    --accent: #00aa55;
-    --accent2: #008844;
-    --accent-dim: rgba(0,170,85,0.12);
-    --accent-glow: 0 0 20px rgba(0,170,85,0.25);
-    --warn: #d97706;
-    --warn-dim: rgba(217,119,6,0.10);
-    --danger: #dc2626;
-    --danger-dim: rgba(220,38,38,0.10);
-    --info: #2563eb;
-    --info-dim: rgba(37,99,235,0.10);
-    --purple: #7c3aed;
-    --purple-dim: rgba(124,58,237,0.10);
+    /* Fondo interior de fields, filtros, sub-secciones: gris claro pero claramente distinto de bg2 */
+    --bg3: #eef1f6;
+    /* Hover states, bordes de relleno, fondo de badges secundarios */
+    --bg4: #c8d0dc;
+    /* Bordes bien visibles — sin transparencia */
+    --border: #b0bac8;
+    --border2: #8896aa;
+    /* Textos: negro profundo para máxima legibilidad */
+    --text: #0d0d14;
+    --text2: #374151;
+    --text3: #6b7280;
+    /* Accent verde oscuro — legible sobre fondo claro */
+    --accent: #047857;
+    --accent2: #065f46;
+    --accent-dim: rgba(4,120,87,0.10);
+    --accent-glow: 0 0 16px rgba(4,120,87,0.20);
+    /* Advertencia */
+    --warn: #b45309;
+    --warn-dim: rgba(180,83,9,0.10);
+    /* Danger */
+    --danger: #b91c1c;
+    --danger-dim: rgba(185,28,28,0.10);
+    /* Info */
+    --info: #1d4ed8;
+    --info-dim: rgba(29,78,216,0.10);
+    /* Purple */
+    --purple: #6d28d9;
+    --purple-dim: rgba(109,40,217,0.10);
   }
+
+  /* Sin scanlines en modo claro */
   html.light body::before { display: none; }
-  html.light .km-card .value { text-shadow: 0 0 20px rgba(0,170,85,0.3); }
-  html.light header { box-shadow: 0 1px 8px rgba(0,0,0,0.08); }
+
+  /* Fondo html también cambia */
+  html.light { background: var(--bg); }
+
+  /* Cards con sombra para separación visual clara */
+  html.light .card {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.10), 0 0 0 1px var(--border);
+  }
+
+  /* km-hero cards: borde izquierdo verde + sombra */
+  html.light .km-card {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.10);
+    border-color: var(--border);
+    border-left: 3px solid var(--accent);
+  }
+  html.light .km-card .value {
+    color: var(--accent);
+    text-shadow: none;
+    animation: none;
+  }
+  html.light .km-card .status-dot {
+    background: var(--accent);
+    box-shadow: 0 0 6px rgba(4,120,87,0.4);
+  }
+  html.light .km-card .status-dot.warn { background: var(--warn); box-shadow: 0 0 6px rgba(180,83,9,0.4); }
+  html.light .km-card .status-dot.danger { background: var(--danger); box-shadow: 0 0 6px rgba(185,28,28,0.4); }
+  html.light .km-card .plate {
+    background: var(--bg4);
+    border-color: var(--border);
+    color: var(--text2);
+    font-weight: 700;
+  }
+
+  /* Header */
+  html.light header {
+    background: #1e293b;
+    border-bottom: none;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.18);
+  }
+  html.light header nav button {
+    color: #94a3b8;
+    border-color: rgba(255,255,255,0.12);
+  }
+  html.light header nav button:hover {
+    background: rgba(255,255,255,0.10);
+    color: #ffffff;
+  }
+  html.light header nav button.active {
+    background: rgba(4,120,87,0.25);
+    color: #34d399;
+    border-color: #34d399;
+  }
+  html.light .logo-text { color: #f1f5f9; }
+  html.light .logo-text span { color: #34d399; }
+  html.light .logo-mark { background: #34d399; }
+  html.light #themeToggle { color: #94a3b8; border-color: rgba(255,255,255,0.12); }
+  html.light #themeToggle:hover { background: rgba(255,255,255,0.10); color: #fff; }
+  html.light #btnLogout { background: rgba(185,28,28,0.2); color: #fca5a5; border-color: rgba(185,28,28,0.35); }
+
+  /* Alert banner */
+  html.light #alertBanner { background: rgba(185,28,28,0.08); border-color: rgba(185,28,28,0.25); }
+
+  /* Tablas — separadores y hover bien visibles */
+  html.light th { border-bottom-color: var(--border2); background: var(--bg3); }
+  html.light td { border-bottom-color: var(--border); }
+  html.light tr:hover td { background: rgba(29,78,216,0.04); }
+
+  /* section-title span */
+  html.light .section-title span { color: var(--accent); }
+
+  /* Inputs y selects en modo claro */
+  html.light input, html.light select, html.light textarea {
+    background: #ffffff;
+    border-color: var(--border2);
+    color: var(--text);
+  }
+  html.light input:focus, html.light select:focus, html.light textarea:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(4,120,87,0.12);
+  }
+
+  /* Badges — más saturados para legibilidad */
+  html.light .badge.ok { background: rgba(4,120,87,0.12); color: #065f46; border: 1px solid rgba(4,120,87,0.25); }
+  html.light .badge.warn { background: rgba(180,83,9,0.10); color: #92400e; border: 1px solid rgba(180,83,9,0.25); }
+  html.light .badge.danger { background: rgba(185,28,28,0.10); color: #991b1b; border: 1px solid rgba(185,28,28,0.25); }
+  html.light .badge.info { background: rgba(29,78,216,0.10); color: #1e40af; border: 1px solid rgba(29,78,216,0.25); }
+  html.light .badge.purple { background: rgba(109,40,217,0.10); color: #5b21b6; border: 1px solid rgba(109,40,217,0.25); }
+
+  /* Filtros del gráfico y widget promedio */
+  html.light .card select, html.light .card input[type=date] {
+    background: #ffffff;
+    border-color: var(--border2);
+  }
+
+  /* Card title */
+  html.light .card-title { color: var(--text); border-bottom: 1px solid var(--border); padding-bottom: 12px; margin-bottom: 16px; }
+  html.light .card-title i { color: var(--accent); }
+
+  /* Modal */
+  html.light .modal {
+    background: #ffffff;
+    border-color: var(--border2);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.18);
+  }
+
+  /* Timeline */
+  html.light .timeline::before { background: var(--border2); }
+  html.light .timeline-item::before { background: var(--accent); border-color: #ffffff; }
+
+  /* Progress bar */
+  html.light .progress-bar { background: var(--bg4); }
+
+  /* Login en modo claro */
+  html.light .login-box { box-shadow: 0 8px 40px rgba(0,0,0,0.15); border-color: var(--border2); }
+  html.light #loginScreen { background: var(--bg); }
 
   /* Toggle button */
   #themeToggle {
