@@ -335,6 +335,44 @@
   }
   #btnLogout:hover { background: rgba(255,85,85,0.22); }
   #btnLogout i { font-size: 16px; }
+
+  /* ===== MODO CLARO ===== */
+  html.light {
+    --bg: #f0f2f5;
+    --bg2: #ffffff;
+    --bg3: #e8eaed;
+    --bg4: #d8dbe0;
+    --border: rgba(0,0,0,0.09);
+    --border2: rgba(0,0,0,0.16);
+    --text: #111118;
+    --text2: #4a4a62;
+    --text3: #8888a0;
+    --accent: #00aa55;
+    --accent2: #008844;
+    --accent-dim: rgba(0,170,85,0.12);
+    --accent-glow: 0 0 20px rgba(0,170,85,0.25);
+    --warn: #d97706;
+    --warn-dim: rgba(217,119,6,0.10);
+    --danger: #dc2626;
+    --danger-dim: rgba(220,38,38,0.10);
+    --info: #2563eb;
+    --info-dim: rgba(37,99,235,0.10);
+    --purple: #7c3aed;
+    --purple-dim: rgba(124,58,237,0.10);
+  }
+  html.light body::before { display: none; }
+  html.light .km-card .value { text-shadow: 0 0 20px rgba(0,170,85,0.3); }
+  html.light header { box-shadow: 0 1px 8px rgba(0,0,0,0.08); }
+
+  /* Toggle button */
+  #themeToggle {
+    padding: 7px 12px; border-radius: 8px; border: 1px solid var(--border);
+    background: transparent; color: var(--text2); cursor: pointer;
+    font-family: var(--sans); font-size: 13px; font-weight: 500;
+    display: flex; align-items: center; gap: 6px; transition: all 0.15s;
+  }
+  #themeToggle:hover { background: var(--bg3); color: var(--text); }
+  #themeToggle i { font-size: 17px; }
 </style>
 </head>
 <body>
@@ -399,6 +437,9 @@
       <i class="ti ti-download" aria-hidden="true"></i>
     </button>
     
+    <button id="themeToggle" onclick="toggleTheme()" title="Cambiar modo claro/oscuro">
+      <i class="ti ti-sun" id="themeIcon" aria-hidden="true"></i>
+    </button>
     <button id="btnLogout" onclick="doLogout()" title="Cerrar sesión">
       <i class="ti ti-logout" aria-hidden="true"></i>Salir
     </button>
@@ -442,12 +483,60 @@
     </div>
   </div>
 
-  <!-- Gráfico KM por mes -->
+  <!-- Gráfico KM por vehículo con filtros -->
   <div class="card">
-    <div class="card-title"><i class="ti ti-chart-bar" aria-hidden="true"></i>KM por Mes — Todos los vehículos</div>
-    <div style="position:relative;height:280px;">
-      <canvas id="chartKmMes" role="img" aria-label="Kilómetros por mes">Sin datos.</canvas>
+    <div class="card-title"><i class="ti ti-chart-bar" aria-hidden="true"></i>KM Recorridos por Vehículo</div>
+
+    <!-- Filtros del gráfico -->
+    <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:18px;padding:14px;background:var(--bg3);border-radius:var(--radius);border:1px solid var(--border)">
+      <div style="display:flex;flex-direction:column;gap:5px;min-width:160px">
+        <label style="font-size:11px;font-weight:600;color:var(--text3);letter-spacing:1px;text-transform:uppercase">Vehículo</label>
+        <select id="chartFiltroVeh" onchange="renderChartKmMes()" style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:var(--sans);font-size:13px;padding:8px 10px;outline:none">
+          <option value="">Todos</option>
+        </select>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:5px;min-width:110px">
+        <label style="font-size:11px;font-weight:600;color:var(--text3);letter-spacing:1px;text-transform:uppercase">Año</label>
+        <select id="chartFiltroAnio" onchange="renderChartKmMes()" style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:var(--sans);font-size:13px;padding:8px 10px;outline:none">
+          <option value="">Todos</option>
+        </select>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:5px;min-width:130px">
+        <label style="font-size:11px;font-weight:600;color:var(--text3);letter-spacing:1px;text-transform:uppercase">Mes</label>
+        <select id="chartFiltroMes" onchange="renderChartKmMes()" style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:var(--sans);font-size:13px;padding:8px 10px;outline:none">
+          <option value="">Todos</option>
+          <option value="1">Enero</option><option value="2">Febrero</option>
+          <option value="3">Marzo</option><option value="4">Abril</option>
+          <option value="5">Mayo</option><option value="6">Junio</option>
+          <option value="7">Julio</option><option value="8">Agosto</option>
+          <option value="9">Septiembre</option><option value="10">Octubre</option>
+          <option value="11">Noviembre</option><option value="12">Diciembre</option>
+        </select>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:5px">
+        <label style="font-size:11px;font-weight:600;color:var(--text3);letter-spacing:1px;text-transform:uppercase">Agrupar</label>
+        <select id="chartAgrup" onchange="renderChartKmMes()" style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:var(--sans);font-size:13px;padding:8px 10px;outline:none">
+          <option value="vehiculo">Por vehículo</option>
+          <option value="mes">Por mes</option>
+        </select>
+      </div>
+      <div style="margin-left:auto;display:flex;gap:8px;align-items:flex-end">
+        <button onclick="resetFiltrosChart()" style="padding:8px 14px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text2);font-family:var(--sans);font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;transition:all 0.15s" onmouseover="this.style.background='var(--bg4)'" onmouseout="this.style.background='transparent'">
+          <i class="ti ti-refresh" style="font-size:15px"></i>Restablecer
+        </button>
+        <button onclick="exportChartPDF()" style="padding:8px 16px;border-radius:8px;border:none;background:var(--accent);color:#000;font-family:var(--sans);font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;transition:all 0.15s" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">
+          <i class="ti ti-file-download" style="font-size:15px"></i>PDF
+        </button>
+      </div>
     </div>
+
+    <!-- Resumen numérico debajo de los filtros -->
+    <div id="chartResumen" style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:16px"></div>
+
+    <div style="position:relative;height:300px;">
+      <canvas id="chartKmMes" role="img" aria-label="Kilómetros por vehículo"></canvas>
+    </div>
+    <div id="chartLegenda" style="display:flex;flex-wrap:wrap;gap:12px;margin-top:14px;justify-content:center"></div>
   </div>
 
   <!-- Servicios próximos -->
@@ -1652,44 +1741,346 @@ function renderUltimosRegistros() {
     </div>`;
   }).join('');
 }
+// Paleta de colores para múltiples vehículos
+const CHART_COLORS = [
+  { bg: 'rgba(0,255,135,0.22)', border: '#00ff87' },
+  { bg: 'rgba(85,153,255,0.22)', border: '#5599ff' },
+  { bg: 'rgba(255,179,71,0.22)', border: '#ffb347' },
+  { bg: 'rgba(176,136,255,0.22)', border: '#b088ff' },
+  { bg: 'rgba(255,85,85,0.22)', border: '#ff5555' },
+  { bg: 'rgba(0,220,220,0.22)', border: '#00dcdc' },
+  { bg: 'rgba(255,200,0,0.22)', border: '#ffc800' },
+];
+
+function poblarFiltrosChart() {
+  // Vehículos
+  const selVeh = document.getElementById('chartFiltroVeh');
+  if (!selVeh) return;
+  const currentVeh = selVeh.value;
+  selVeh.innerHTML = '<option value="">Todos</option>' +
+    state.vehiculos.map(v => `<option value="${v.id}">${v.nombre} (${v.patente||'s/p'})</option>`).join('');
+  selVeh.value = currentVeh;
+
+  // Años disponibles en registros
+  const anios = [...new Set(state.registros
+    .filter(r => r.fechaSalida)
+    .map(r => r.fechaSalida.slice(0,4)))].sort().reverse();
+  const selAnio = document.getElementById('chartFiltroAnio');
+  const currentAnio = selAnio.value;
+  selAnio.innerHTML = '<option value="">Todos</option>' +
+    anios.map(a => `<option value="${a}">${a}</option>`).join('');
+  // Por defecto mostrar año actual
+  if (!currentAnio) {
+    const anioActual = new Date().getFullYear().toString();
+    if (anios.includes(anioActual)) selAnio.value = anioActual;
+  } else {
+    selAnio.value = currentAnio;
+  }
+}
+
+function resetFiltrosChart() {
+  document.getElementById('chartFiltroVeh').value = '';
+  document.getElementById('chartFiltroAnio').value = new Date().getFullYear().toString();
+  document.getElementById('chartFiltroMes').value = '';
+  document.getElementById('chartAgrup').value = 'vehiculo';
+  renderChartKmMes();
+}
+
 function renderChartKmMes() {
   if (kmChart) { kmChart.destroy(); kmChart = null; }
   const canvas = document.getElementById('chartKmMes');
-  if (!state.registros.length) {
-    canvas.parentElement.innerHTML = '<p style="text-align:center;color:var(--text3);padding:40px">Sin datos de registros.</p>';
+  if (!canvas) return;
+
+  poblarFiltrosChart();
+
+  const filtroVeh = document.getElementById('chartFiltroVeh').value;
+  const filtroAnio = document.getElementById('chartFiltroAnio').value;
+  const filtroMes = parseInt(document.getElementById('chartFiltroMes').value) || 0;
+  const agrup = document.getElementById('chartAgrup').value;
+  const isLight = document.documentElement.classList.contains('light');
+  const gridColor = isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.05)';
+  const tickColor = isLight ? '#6666880' : '#9090a8';
+
+  // Filtrar registros completados
+  let regs = state.registros.filter(r => r.completado && r.fechaSalida);
+  if (filtroVeh) regs = regs.filter(r => r.vehiculoId === filtroVeh);
+  if (filtroAnio) regs = regs.filter(r => r.fechaSalida.startsWith(filtroAnio));
+  if (filtroMes) regs = regs.filter(r => parseInt(r.fechaSalida.slice(5,7)) === filtroMes);
+
+  // Vehículos presentes en el resultado
+  const vehiculosIds = filtroVeh
+    ? [filtroVeh]
+    : [...new Set(regs.map(r => r.vehiculoId))];
+
+  if (!regs.length || !vehiculosIds.length) {
+    document.getElementById('chartResumen').innerHTML = '';
+    document.getElementById('chartLegenda').innerHTML = '';
+    // Mostrar KM actuales de todos los vehículos si no hay registros filtrados
+    renderChartKmActuales(canvas, isLight, gridColor);
     return;
   }
-  const mapa = {};
-  state.registros.forEach(r => {
-    if (!r.fechaSalida) return;
-    const key = r.fechaSalida.slice(0, 7);
-    mapa[key] = (mapa[key] || 0) + Math.max(0, (r.kmRegreso || 0) - (r.kmSalida || 0));
+
+  let labels, datasets;
+
+  if (agrup === 'vehiculo') {
+    // Una barra por vehículo con el total de KM recorridos
+    labels = vehiculosIds.map(id => {
+      const v = getVehiculo(id);
+      return v ? v.nombre + '\n' + (v.patente||'') : id;
+    });
+    datasets = [{
+      label: 'KM Recorridos',
+      data: vehiculosIds.map(id => {
+        const regsVeh = regs.filter(r => r.vehiculoId === id);
+        return regsVeh.reduce((s,r) => s + Math.max(0, r.kmRegreso - r.kmSalida), 0);
+      }),
+      backgroundColor: vehiculosIds.map((_, i) => CHART_COLORS[i % CHART_COLORS.length].bg),
+      borderColor: vehiculosIds.map((_, i) => CHART_COLORS[i % CHART_COLORS.length].border),
+      borderWidth: 2,
+      borderRadius: 8,
+    }];
+  } else {
+    // Por mes — un dataset por vehículo
+    const mesesSet = [...new Set(regs.map(r => r.fechaSalida.slice(0,7)))].sort();
+    labels = mesesSet.map(k => { const [y,m] = k.split('-'); return MESES[parseInt(m)] + ' ' + y; });
+    datasets = vehiculosIds.map((id, i) => {
+      const v = getVehiculo(id);
+      const col = CHART_COLORS[i % CHART_COLORS.length];
+      return {
+        label: v ? v.nombre : id,
+        data: mesesSet.map(mes => {
+          const regsVehMes = regs.filter(r => r.vehiculoId === id && r.fechaSalida.startsWith(mes));
+          return regsVehMes.reduce((s,r) => s + Math.max(0, r.kmRegreso - r.kmSalida), 0);
+        }),
+        backgroundColor: col.bg,
+        borderColor: col.border,
+        borderWidth: 2,
+        borderRadius: 6,
+      };
+    });
+  }
+
+  kmChart = new Chart(canvas, {
+    type: 'bar',
+    data: { labels, datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: agrup === 'mes' && vehiculosIds.length > 1, labels: { color: isLight ? '#333' : '#ccc', font: { family: 'JetBrains Mono', size: 11 } } },
+        tooltip: {
+          callbacks: {
+            label: ctx => ' ' + ctx.dataset.label + ': ' + ctx.parsed.y.toLocaleString('es-AR') + ' km'
+          }
+        }
+      },
+      scales: {
+        y: {
+          grid: { color: gridColor },
+          ticks: { color: isLight ? '#666' : '#9090a8', font: { family: 'JetBrains Mono' },
+            callback: v => v.toLocaleString('es-AR') }
+        },
+        x: { grid: { color: gridColor }, ticks: { color: isLight ? '#666' : '#9090a8', font: { family: 'JetBrains Mono', size: 11 } } }
+      }
+    }
   });
-  const keys = Object.keys(mapa).sort();
-  const labels = keys.map(k => { const [y,m] = k.split('-'); return MESES[parseInt(m)] + ' ' + y; });
-  const data = keys.map(k => mapa[k]);
+
+  // Resumen numérico
+  renderChartResumen(vehiculosIds, regs);
+  // Legenda custom
+  renderChartLegenda(vehiculosIds);
+}
+
+function renderChartKmActuales(canvas, isLight, gridColor) {
+  // Sin registros filtrados: mostrar KM actuales de cada vehículo
+  if (!state.vehiculos.length) {
+    canvas.parentElement.style.display = 'none';
+    return;
+  }
+  canvas.parentElement.style.display = 'block';
+  const labels = state.vehiculos.map(v => v.nombre + (v.patente ? ' (' + v.patente + ')' : ''));
+  const data = state.vehiculos.map(v => v.km || 0);
   kmChart = new Chart(canvas, {
     type: 'bar',
     data: {
       labels,
       datasets: [{
-        label: 'KM recorridos',
+        label: 'KM Actuales',
         data,
-        backgroundColor: 'rgba(0,255,135,0.25)',
-        borderColor: '#00ff87',
-        borderWidth: 2,
-        borderRadius: 6,
+        backgroundColor: state.vehiculos.map((_, i) => CHART_COLORS[i % CHART_COLORS.length].bg),
+        borderColor: state.vehiculos.map((_, i) => CHART_COLORS[i % CHART_COLORS.length].border),
+        borderWidth: 2, borderRadius: 8,
       }]
     },
     options: {
       responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => ' KM actuales: ' + ctx.parsed.y.toLocaleString('es-AR') + ' km' } }
+      },
       scales: {
-        y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#9090a8', font: { family: 'JetBrains Mono' } } },
-        x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#9090a8', font: { family: 'JetBrains Mono' } } }
+        y: { grid: { color: gridColor }, ticks: { color: isLight?'#666':'#9090a8', font:{family:'JetBrains Mono'}, callback: v => v.toLocaleString('es-AR') } },
+        x: { grid: { color: gridColor }, ticks: { color: isLight?'#666':'#9090a8', font:{family:'JetBrains Mono',size:11} } }
       }
     }
   });
+  // Resumen con KM actuales
+  const resEl = document.getElementById('chartResumen');
+  if (resEl) resEl.innerHTML = state.vehiculos.map((v,i) => {
+    const col = CHART_COLORS[i % CHART_COLORS.length];
+    return `<div style="background:var(--bg3);border:1px solid var(--border);border-left:3px solid ${col.border};border-radius:8px;padding:10px 16px;min-width:160px">
+      <div style="font-size:11px;color:var(--text3);font-weight:600;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">${v.nombre}</div>
+      <div style="font-family:var(--mono);font-size:20px;color:${col.border};font-weight:500">${(v.km||0).toLocaleString('es-AR')}</div>
+      <div style="font-size:11px;color:var(--text3);margin-top:2px">km actuales · ${v.patente||'s/patente'}</div>
+    </div>`;
+  }).join('');
+  const leg = document.getElementById('chartLegenda');
+  if (leg) leg.innerHTML = '';
+}
+
+function renderChartResumen(vehiculosIds, regs) {
+  const resEl = document.getElementById('chartResumen');
+  if (!resEl) return;
+  resEl.innerHTML = vehiculosIds.map((id, i) => {
+    const v = getVehiculo(id);
+    const regsV = regs.filter(r => r.vehiculoId === id);
+    const kmTotal = regsV.reduce((s,r) => s + Math.max(0, r.kmRegreso - r.kmSalida), 0);
+    const col = CHART_COLORS[i % CHART_COLORS.length];
+    return `<div style="background:var(--bg3);border:1px solid var(--border);border-left:3px solid ${col.border};border-radius:8px;padding:10px 16px;min-width:160px">
+      <div style="font-size:11px;color:var(--text3);font-weight:600;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">${v ? v.nombre : id}</div>
+      <div style="font-family:var(--mono);font-size:20px;color:${col.border};font-weight:500">+${kmTotal.toLocaleString('es-AR')}</div>
+      <div style="font-size:11px;color:var(--text3);margin-top:2px">km recorridos · ${regsV.length} viaje${regsV.length!==1?'s':''}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderChartLegenda(vehiculosIds) {
+  const leg = document.getElementById('chartLegenda');
+  if (!leg) return;
+  leg.innerHTML = vehiculosIds.map((id, i) => {
+    const v = getVehiculo(id);
+    const col = CHART_COLORS[i % CHART_COLORS.length];
+    return `<div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2)">
+      <span style="width:12px;height:12px;border-radius:3px;background:${col.border};display:inline-block;flex-shrink:0"></span>
+      ${v ? v.nombre + (v.patente ? ' (' + v.patente + ')' : '') : id}
+    </div>`;
+  }).join('');
+}
+
+function exportChartPDF() {
+  const filtroVeh = document.getElementById('chartFiltroVeh').value;
+  const filtroAnio = document.getElementById('chartFiltroAnio').value;
+  const filtroMes = parseInt(document.getElementById('chartFiltroMes').value) || 0;
+
+  const vehiculoLabel = filtroVeh ? getVehiculoNombre(filtroVeh) : 'Todos los vehículos';
+  const anioLabel = filtroAnio || 'Todos los años';
+  const mesLabel = filtroMes ? MESES[filtroMes] : 'Todos los meses';
+
+  let regs = state.registros.filter(r => r.completado && r.fechaSalida);
+  if (filtroVeh) regs = regs.filter(r => r.vehiculoId === filtroVeh);
+  if (filtroAnio) regs = regs.filter(r => r.fechaSalida.startsWith(filtroAnio));
+  if (filtroMes) regs = regs.filter(r => parseInt(r.fechaSalida.slice(5,7)) === filtroMes);
+
+  const vehiculosIds = filtroVeh
+    ? (state.vehiculos.find(v=>v.id===filtroVeh) ? [filtroVeh] : [])
+    : [...new Set(regs.map(r => r.vehiculoId))];
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+  const pw = 210; const ph = 297;
+  let y = 15;
+
+  // Header
+  doc.setFillColor(10, 10, 15);
+  doc.rect(0, 0, pw, 38, 'F');
+  doc.setTextColor(0, 255, 135);
+  doc.setFontSize(18); doc.setFont('helvetica', 'bold');
+  doc.text('FlotaControl', 14, y + 8);
+  doc.setFontSize(10); doc.setTextColor(200, 200, 200);
+  doc.text('REPORTE DE KILÓMETROS', 14, y + 18);
+  doc.setFontSize(8); doc.setTextColor(140, 140, 160);
+  doc.text(`Vehículo: ${vehiculoLabel}  ·  Año: ${anioLabel}  ·  Mes: ${mesLabel}`, 14, y + 28);
+  doc.text('Generado: ' + new Date().toLocaleString('es-AR'), pw - 14, y + 28, { align: 'right' });
+  y = 48;
+
+  // Tarjetas resumen por vehículo
+  if (vehiculosIds.length) {
+    const colW = Math.min(58, (pw - 28) / vehiculosIds.length);
+    vehiculosIds.forEach((id, i) => {
+      const v = getVehiculo(id);
+      const regsV = regs.filter(r => r.vehiculoId === id);
+      const km = regsV.reduce((s,r) => s + Math.max(0,r.kmRegreso - r.kmSalida), 0);
+      const cx = 14 + i * (colW + 4);
+      doc.setFillColor(25, 25, 35);
+      doc.roundedRect(cx, y, colW, 22, 3, 3, 'F');
+      doc.setFontSize(7); doc.setTextColor(130,130,160); doc.setFont('helvetica','normal');
+      doc.text((v ? v.nombre.toUpperCase() : id), cx+4, y+6);
+      doc.setFontSize(13); doc.setTextColor(0,200,100); doc.setFont('helvetica','bold');
+      doc.text('+' + km.toLocaleString('es-AR') + ' km', cx+4, y+15);
+      doc.setFontSize(7); doc.setTextColor(110,110,130); doc.setFont('helvetica','normal');
+      doc.text(regsV.length + ' viajes', cx+4, y+20);
+    });
+    y += 30;
+  }
+
+  // Gráfico de barras embebido como imagen
+  const canvas = document.getElementById('chartKmMes');
+  if (canvas && kmChart) {
+    try {
+      const imgData = canvas.toDataURL('image/png');
+      doc.addImage(imgData, 'PNG', 14, y, pw - 28, 70);
+      y += 76;
+    } catch(e) {}
+  }
+
+  // Tabla de registros
+  doc.setFontSize(10); doc.setTextColor(220,220,230); doc.setFont('helvetica','bold');
+  doc.text('Detalle de Registros', 14, y); y += 5;
+  doc.setDrawColor(40,40,60); doc.line(14, y, pw-14, y); y += 4;
+
+  const ths = ['Vehículo','Conductor','Salida','Regreso','KM Recorridos','Destino'];
+  const cws = [38, 34, 30, 30, 24, 40];
+  doc.setFontSize(7); doc.setTextColor(120,120,150); doc.setFont('helvetica','normal');
+  let cx2 = 14;
+  ths.forEach((h,i) => { doc.text(h, cx2, y); cx2 += cws[i]; }); y += 4;
+  doc.line(14, y, pw-14, y); y += 3;
+
+  doc.setTextColor(210,210,225);
+  regs.slice().reverse().forEach(r => {
+    if (y > ph - 20) { doc.addPage(); y = 15; }
+    const kmRec = Math.max(0, r.kmRegreso - r.kmSalida);
+    const row = [
+      getVehiculoNombre(r.vehiculoId).slice(0,20),
+      getConductorNombre(r.conductorId).slice(0,18),
+      fmtDate(r.fechaSalida),
+      fmtDate(r.fechaRegreso),
+      '+' + kmRec.toLocaleString('es-AR') + ' km',
+      (r.destino||'—').slice(0,22),
+    ];
+    cx2 = 14;
+    row.forEach((d,i) => { doc.text(d, cx2, y); cx2 += cws[i]; });
+    y += 5;
+    doc.setDrawColor(28,28,40); doc.line(14, y-2, pw-14, y-2);
+  });
+
+  if (!regs.length) {
+    doc.setTextColor(100,100,120);
+    doc.text('Sin registros para los filtros seleccionados.', 14, y);
+  }
+
+  // Footer
+  const totalPages = doc.internal.getNumberOfPages();
+  for (let i = 1; i <= totalPages; i++) {
+    doc.setPage(i);
+    doc.setFillColor(10,10,15); doc.rect(0, ph-11, pw, 11, 'F');
+    doc.setFontSize(7); doc.setTextColor(90,90,110);
+    doc.text('FlotaControl — Reporte de Kilómetros', 14, ph-4);
+    doc.text('Pág. ' + i + ' / ' + totalPages, pw-14, ph-4, { align: 'right' });
+  }
+
+  // Abrir en nueva pestaña
+  const pdfBlob = doc.output('blob');
+  const url = URL.createObjectURL(pdfBlob);
+  window.open(url, '_blank');
 }
 function renderServiciosProximos() {
   const c = document.getElementById('serviciosProximos');
@@ -1915,6 +2306,26 @@ function renderAll() {
 
 // ===================== INIT =====================
 
+
+// ===================== MODO CLARO / OSCURO =====================
+function toggleTheme() {
+  const isLight = document.documentElement.classList.toggle('light');
+  localStorage.setItem('flotaTheme', isLight ? 'light' : 'dark');
+  document.getElementById('themeIcon').className = isLight ? 'ti ti-moon' : 'ti ti-sun';
+  // Re-renderizar gráfico con colores del nuevo tema
+  if (document.getElementById('page-dashboard').classList.contains('active')) {
+    renderChartKmMes();
+  }
+}
+function applyTheme() {
+  const saved = localStorage.getItem('flotaTheme');
+  if (saved === 'light') {
+    document.documentElement.classList.add('light');
+    const icon = document.getElementById('themeIcon');
+    if (icon) icon.className = 'ti ti-moon';
+  }
+}
+
 // ===================== LOGIN =====================
 const CREDENTIALS = { user: 'admin', pass: 'ies21' };
 const SESSION_KEY = 'flotaSession';
@@ -1956,6 +2367,7 @@ function doLogout() {
 }
 
 (function init() {
+  applyTheme();
   if (!isLoggedIn()) {
     document.getElementById('loginScreen').classList.remove('hidden');
   } else {
