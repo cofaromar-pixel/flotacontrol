@@ -544,6 +544,65 @@
     <div class="card-title"><i class="ti ti-tool" aria-hidden="true"></i>Servicios Próximos / Vencidos</div>
     <div id="serviciosProximos"><p style="color:var(--text3);font-size:13px;">Sin servicios registrados.</p></div>
   </div>
+
+  <!-- ===== WIDGET PROMEDIO KM DIARIO ===== -->
+  <div class="card" id="cardPromedioKm">
+    <div class="card-title" style="justify-content:space-between;flex-wrap:wrap;gap:10px">
+      <span style="display:flex;align-items:center;gap:8px">
+        <i class="ti ti-trending-up" aria-hidden="true"></i>Promedio de KM Diarios — Flota
+      </span>
+      <button onclick="exportPromedioKmPDF()" style="padding:7px 14px;border-radius:8px;border:none;background:var(--accent);color:#000;font-family:var(--sans);font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px" onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
+        <i class="ti ti-file-download" style="font-size:15px"></i>Exportar PDF
+      </button>
+    </div>
+
+    <!-- Filtros promedio -->
+    <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;padding:14px;background:var(--bg3);border-radius:var(--radius);border:1px solid var(--border);margin-bottom:18px">
+      <div style="display:flex;flex-direction:column;gap:5px;min-width:160px">
+        <label style="font-size:11px;font-weight:600;color:var(--text3);letter-spacing:1px;text-transform:uppercase">Vehículo</label>
+        <select id="promFiltroVeh" onchange="renderPromedioKm()" style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:var(--sans);font-size:13px;padding:8px 10px;outline:none">
+          <option value="">Todos (flota)</option>
+        </select>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:5px;min-width:130px">
+        <label style="font-size:11px;font-weight:600;color:var(--text3);letter-spacing:1px;text-transform:uppercase">Fecha desde</label>
+        <input type="date" id="promDesde" onchange="renderPromedioKm()" style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:var(--sans);font-size:13px;padding:8px 10px;outline:none">
+      </div>
+      <div style="display:flex;flex-direction:column;gap:5px;min-width:130px">
+        <label style="font-size:11px;font-weight:600;color:var(--text3);letter-spacing:1px;text-transform:uppercase">Fecha hasta</label>
+        <input type="date" id="promHasta" onchange="renderPromedioKm()" style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:var(--sans);font-size:13px;padding:8px 10px;outline:none">
+      </div>
+      <div style="display:flex;flex-direction:column;gap:5px;min-width:130px">
+        <label style="font-size:11px;font-weight:600;color:var(--text3);letter-spacing:1px;text-transform:uppercase">Agrupación</label>
+        <select id="promAgrup" onchange="renderPromedioKm()" style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:var(--sans);font-size:13px;padding:8px 10px;outline:none">
+          <option value="flota">Flota completa</option>
+          <option value="individual">Por vehículo</option>
+          <option value="dia">Por día</option>
+        </select>
+      </div>
+      <div style="margin-left:auto;display:flex;align-items:flex-end">
+        <button onclick="resetFiltrosProm()" style="padding:8px 14px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text2);font-family:var(--sans);font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:5px;transition:all .15s" onmouseover="this.style.background='var(--bg4)'" onmouseout="this.style.background='transparent'">
+          <i class="ti ti-refresh" style="font-size:15px"></i>Restablecer
+        </button>
+      </div>
+    </div>
+
+    <!-- Tarjetas de resumen promedio -->
+    <div id="promResumen" style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:18px"></div>
+
+    <!-- Gráfico promedio -->
+    <div style="position:relative;height:260px;">
+      <canvas id="chartPromedio" role="img" aria-label="Promedio KM diarios"></canvas>
+    </div>
+
+    <!-- Tabla detallada -->
+    <div style="margin-top:18px;overflow-x:auto" id="promTablaWrap">
+      <table style="width:100%;border-collapse:collapse;font-size:13px">
+        <thead id="promTablaHead"></thead>
+        <tbody id="promTablaBody"></tbody>
+      </table>
+    </div>
+  </div>
 </div>
 
 <!-- ===== VEHÍCULOS ===== -->
@@ -1085,7 +1144,12 @@ function fmtDate(str) {
 }
 function fmtDateTime(str) {
   if (!str) return '—';
-  return new Date(str).toLocaleString('es-AR');
+  const d = new Date(str);
+  const fecha = d.toLocaleDateString('es-AR');
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mm = String(d.getMinutes()).padStart(2, '0');
+  const ss = String(d.getSeconds()).padStart(2, '0');
+  return fecha + ', ' + hh + ':' + mm + ':' + ss;
 }
 function diffDays(dateStr) {
   if (!dateStr) return 9999;
@@ -1690,6 +1754,8 @@ function renderDashboard() {
   renderUltimosRegistros();
   renderChartKmMes();
   renderServiciosProximos();
+  poblarFiltrosPromedio();
+  renderPromedioKm();
   checkAndShowBanner();
 }
 function renderKmHero() {
@@ -2082,6 +2148,424 @@ function exportChartPDF() {
   const url = URL.createObjectURL(pdfBlob);
   window.open(url, '_blank');
 }
+
+// ===================== PROMEDIO KM DIARIO =====================
+let promChart = null;
+
+function poblarFiltrosPromedio() {
+  const sel = document.getElementById('promFiltroVeh');
+  if (!sel) return;
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">Todos (flota)</option>' +
+    state.vehiculos.map(v => `<option value="${v.id}">${v.nombre} (${v.patente||'s/p'})</option>`).join('');
+  sel.value = cur;
+  // Rango por defecto: mes actual
+  if (!document.getElementById('promDesde').value) {
+    const hoy = new Date();
+    const primerDia = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+    document.getElementById('promDesde').value = primerDia.toISOString().slice(0,10);
+    document.getElementById('promHasta').value = hoy.toISOString().slice(0,10);
+  }
+}
+
+function resetFiltrosProm() {
+  document.getElementById('promFiltroVeh').value = '';
+  document.getElementById('promAgrup').value = 'flota';
+  const hoy = new Date();
+  const primerDia = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+  document.getElementById('promDesde').value = primerDia.toISOString().slice(0,10);
+  document.getElementById('promHasta').value = hoy.toISOString().slice(0,10);
+  renderPromedioKm();
+}
+
+function getRegsFiltered() {
+  const filtroVeh = document.getElementById('promFiltroVeh') ? document.getElementById('promFiltroVeh').value : '';
+  const desde = document.getElementById('promDesde') ? document.getElementById('promDesde').value : '';
+  const hasta = document.getElementById('promHasta') ? document.getElementById('promHasta').value : '';
+  let regs = state.registros.filter(r => r.completado && r.fechaSalida);
+  if (filtroVeh) regs = regs.filter(r => r.vehiculoId === filtroVeh);
+  if (desde) regs = regs.filter(r => r.fechaSalida.slice(0,10) >= desde);
+  if (hasta) regs = regs.filter(r => r.fechaSalida.slice(0,10) <= hasta);
+  return regs;
+}
+
+function calcDiasRango() {
+  const desde = document.getElementById('promDesde').value;
+  const hasta = document.getElementById('promHasta').value;
+  if (!desde || !hasta) return 1;
+  const diff = Math.ceil((new Date(hasta) - new Date(desde)) / 86400000) + 1;
+  return Math.max(1, diff);
+}
+
+function renderPromedioKm() {
+  if (promChart) { promChart.destroy(); promChart = null; }
+  const canvas = document.getElementById('chartPromedio');
+  if (!canvas) return;
+  poblarFiltrosPromedio();
+
+  const agrup = document.getElementById('promAgrup').value;
+  const regs = getRegsFiltered();
+  const dias = calcDiasRango();
+  const isLight = document.documentElement.classList.contains('light');
+  const gridColor = isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.05)';
+
+  // ── FLOTA COMPLETA ──
+  if (agrup === 'flota') {
+    const totalKm = regs.reduce((s,r) => s + Math.max(0, r.kmRegreso - r.kmSalida), 0);
+    const prom = totalKm / dias;
+    renderPromedioResumen([{
+      label: 'Flota completa', km: totalKm, prom, viajes: regs.length, dias,
+      color: CHART_COLORS[0].border
+    }]);
+    // Gráfico: KM por día dentro del rango
+    const byDay = {};
+    regs.forEach(r => {
+      const k = r.fechaSalida.slice(0,10);
+      byDay[k] = (byDay[k]||0) + Math.max(0, r.kmRegreso - r.kmSalida);
+    });
+    const dayKeys = Object.keys(byDay).sort();
+    promChart = new Chart(canvas, {
+      type: 'bar',
+      data: {
+        labels: dayKeys.map(k => { const d=new Date(k+'T12:00:00'); return d.getDate()+'/'+(d.getMonth()+1); }),
+        datasets: [{
+          label: 'KM por día',
+          data: dayKeys.map(k => byDay[k]),
+          backgroundColor: CHART_COLORS[0].bg, borderColor: CHART_COLORS[0].border,
+          borderWidth: 2, borderRadius: 6,
+        }, {
+          label: 'Promedio diario',
+          data: dayKeys.map(() => Math.round(prom * 10) / 10),
+          type: 'line', borderColor: '#ffb347', borderWidth: 2,
+          borderDash: [6,3], pointRadius: 0, fill: false,
+        }]
+      },
+      options: chartPromOpts(gridColor, isLight)
+    });
+    renderPromedioTabla(agrup, regs, dias);
+    return;
+  }
+
+  // ── POR VEHÍCULO ──
+  if (agrup === 'individual') {
+    const vIds = document.getElementById('promFiltroVeh').value
+      ? [document.getElementById('promFiltroVeh').value]
+      : [...new Set(regs.map(r => r.vehiculoId))];
+    const filas = vIds.map((id, i) => {
+      const regsV = regs.filter(r => r.vehiculoId === id);
+      const totalKm = regsV.reduce((s,r) => s + Math.max(0, r.kmRegreso - r.kmSalida), 0);
+      const prom = totalKm / dias;
+      const v = getVehiculo(id);
+      return { label: v ? v.nombre + (v.patente?' ('+v.patente+')':'') : id, km: totalKm, prom, viajes: regsV.length, dias, color: CHART_COLORS[i%CHART_COLORS.length].border, id };
+    });
+    renderPromedioResumen(filas);
+    promChart = new Chart(canvas, {
+      type: 'bar',
+      data: {
+        labels: filas.map(f => f.label),
+        datasets: [{
+          label: 'Promedio KM/día',
+          data: filas.map(f => Math.round(f.prom * 10) / 10),
+          backgroundColor: filas.map(f => f.color.replace(')',',0.22)').replace('rgb','rgba')||CHART_COLORS[0].bg),
+          borderColor: filas.map(f => f.color),
+          borderWidth: 2, borderRadius: 8,
+        }]
+      },
+      options: chartPromOpts(gridColor, isLight, 'Prom. KM/día')
+    });
+    renderPromedioTabla(agrup, regs, dias);
+    return;
+  }
+
+  // ── POR DÍA ──
+  if (agrup === 'dia') {
+    const byDay = {};
+    regs.forEach(r => {
+      const k = r.fechaSalida.slice(0,10);
+      if (!byDay[k]) byDay[k] = { km: 0, viajes: 0 };
+      byDay[k].km += Math.max(0, r.kmRegreso - r.kmSalida);
+      byDay[k].viajes++;
+    });
+    const dayKeys = Object.keys(byDay).sort();
+    if (!dayKeys.length) {
+      renderPromedioResumen([]);
+      renderPromedioTabla(agrup, [], dias);
+      return;
+    }
+    const totalKm = dayKeys.reduce((s,k)=>s+byDay[k].km, 0);
+    const prom = totalKm / dayKeys.length;
+    renderPromedioResumen([{
+      label: 'Promedio por día activo', km: totalKm,
+      prom, viajes: regs.length, dias: dayKeys.length, color: CHART_COLORS[2].border
+    }]);
+    promChart = new Chart(canvas, {
+      type: 'bar',
+      data: {
+        labels: dayKeys.map(k => { const d=new Date(k+'T12:00:00'); return d.getDate()+'/'+(d.getMonth()+1)+'/'+d.getFullYear().toString().slice(2); }),
+        datasets: [{
+          label: 'KM del día',
+          data: dayKeys.map(k => byDay[k].km),
+          backgroundColor: CHART_COLORS[2].bg, borderColor: CHART_COLORS[2].border,
+          borderWidth: 2, borderRadius: 6,
+        }, {
+          label: 'Promedio',
+          data: dayKeys.map(() => Math.round(prom*10)/10),
+          type: 'line', borderColor: '#00ff87', borderWidth: 2,
+          borderDash: [6,3], pointRadius: 0, fill: false,
+        }]
+      },
+      options: chartPromOpts(gridColor, isLight)
+    });
+    renderPromedioTabla(agrup, regs, dias, byDay, dayKeys);
+  }
+}
+
+function chartPromOpts(gridColor, isLight, yLabel) {
+  return {
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: { display: true, labels: { color: isLight?'#333':'#ccc', font: { family:'JetBrains Mono', size:11 }, boxWidth:12 } },
+      tooltip: { callbacks: { label: ctx => ' ' + ctx.dataset.label + ': ' + ctx.parsed.y.toLocaleString('es-AR') + ' km' } }
+    },
+    scales: {
+      y: { grid: { color: gridColor }, ticks: { color: isLight?'#666':'#9090a8', font:{family:'JetBrains Mono'}, callback: v => v.toLocaleString('es-AR') + ' km' } },
+      x: { grid: { color: gridColor }, ticks: { color: isLight?'#666':'#9090a8', font:{family:'JetBrains Mono', size:10} } }
+    }
+  };
+}
+
+function renderPromedioResumen(filas) {
+  const el = document.getElementById('promResumen');
+  if (!el) return;
+  if (!filas.length) {
+    el.innerHTML = '<p style="color:var(--text3);font-size:13px">Sin datos para el período seleccionado.</p>';
+    return;
+  }
+  el.innerHTML = filas.map(f => `
+    <div style="background:var(--bg3);border:1px solid var(--border);border-left:3px solid ${f.color};border-radius:8px;padding:12px 16px;min-width:180px;flex:1">
+      <div style="font-size:11px;color:var(--text3);font-weight:600;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px">${f.label}</div>
+      <div style="font-family:var(--mono);font-size:24px;color:${f.color};font-weight:500;line-height:1">${(Math.round(f.prom*10)/10).toLocaleString('es-AR')}</div>
+      <div style="font-size:11px;color:var(--text3);margin-top:4px">km/día promedio</div>
+      <div style="margin-top:10px;display:flex;gap:14px;font-size:12px">
+        <div><span style="color:var(--text3)">Total</span><br><strong style="font-family:var(--mono)">${f.km.toLocaleString('es-AR')} km</strong></div>
+        <div><span style="color:var(--text3)">Viajes</span><br><strong>${f.viajes}</strong></div>
+        <div><span style="color:var(--text3)">Días</span><br><strong>${f.dias}</strong></div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderPromedioTabla(agrup, regs, dias, byDay, dayKeys) {
+  const head = document.getElementById('promTablaHead');
+  const body = document.getElementById('promTablaBody');
+  if (!head || !body) return;
+
+  const thStyle = 'text-align:left;padding:9px 12px;color:var(--text3);font-weight:500;font-size:11px;letter-spacing:1px;text-transform:uppercase;border-bottom:1px solid var(--border)';
+  const tdStyle = 'padding:10px 12px;border-bottom:1px solid var(--border);font-size:13px;vertical-align:middle';
+  const monoStyle = tdStyle + ';font-family:var(--mono)';
+
+  if (agrup === 'flota' || agrup === 'individual') {
+    const vIds = agrup === 'individual' && document.getElementById('promFiltroVeh').value
+      ? [document.getElementById('promFiltroVeh').value]
+      : agrup === 'individual'
+        ? [...new Set(regs.map(r => r.vehiculoId))]
+        : null;
+
+    if (agrup === 'flota') {
+      head.innerHTML = `<tr><th style="${thStyle}">Fecha</th><th style="${thStyle}">Vehículo</th><th style="${thStyle}">Conductor</th><th style="${thStyle}">KM Salida</th><th style="${thStyle}">KM Regreso</th><th style="${thStyle}">KM Recorridos</th><th style="${thStyle}">Destino</th></tr>`;
+      body.innerHTML = regs.slice().sort((a,b)=>a.fechaSalida.localeCompare(b.fechaSalida)).map(r => {
+        const km = Math.max(0, r.kmRegreso - r.kmSalida);
+        return `<tr>
+          <td style="${monoStyle}">${r.fechaSalida.slice(0,10)}</td>
+          <td style="${tdStyle}"><strong>${getVehiculoNombre(r.vehiculoId)}</strong></td>
+          <td style="${tdStyle}">${getConductorNombre(r.conductorId)}</td>
+          <td style="${monoStyle}">${r.kmSalida.toLocaleString('es-AR')}</td>
+          <td style="${monoStyle}">${r.kmRegreso.toLocaleString('es-AR')}</td>
+          <td style="${monoStyle};color:var(--accent)">+${km.toLocaleString('es-AR')}</td>
+          <td style="${tdStyle}">${r.destino||'—'}</td>
+        </tr>`;
+      }).join('') || `<tr><td colspan="7" style="${tdStyle};text-align:center;color:var(--text3)">Sin registros.</td></tr>`;
+    } else {
+      head.innerHTML = `<tr><th style="${thStyle}">Vehículo</th><th style="${thStyle}">Patente</th><th style="${thStyle}">Viajes</th><th style="${thStyle}">KM Totales</th><th style="${thStyle}">Promedio KM/día</th><th style="${thStyle}">Días período</th></tr>`;
+      body.innerHTML = (vIds||[]).map(id => {
+        const v = getVehiculo(id);
+        const regsV = regs.filter(r => r.vehiculoId === id);
+        const km = regsV.reduce((s,r) => s + Math.max(0,r.kmRegreso-r.kmSalida), 0);
+        const prom = Math.round(km/dias*10)/10;
+        return `<tr>
+          <td style="${tdStyle}"><strong>${v?v.nombre:id}</strong></td>
+          <td style="${monoStyle}">${v&&v.patente?v.patente:'—'}</td>
+          <td style="${tdStyle}">${regsV.length}</td>
+          <td style="${monoStyle};color:var(--accent)">${km.toLocaleString('es-AR')} km</td>
+          <td style="${monoStyle};color:var(--info)">${prom.toLocaleString('es-AR')} km/día</td>
+          <td style="${monoStyle}">${dias}</td>
+        </tr>`;
+      }).join('') || `<tr><td colspan="6" style="${tdStyle};text-align:center;color:var(--text3)">Sin datos.</td></tr>`;
+    }
+  } else if (agrup === 'dia' && byDay && dayKeys) {
+    head.innerHTML = `<tr><th style="${thStyle}">Fecha</th><th style="${thStyle}">Viajes</th><th style="${thStyle}">KM del día</th><th style="${thStyle}">vs. Promedio</th></tr>`;
+    const totalKm = dayKeys.reduce((s,k)=>s+byDay[k].km, 0);
+    const prom = totalKm / dayKeys.length;
+    body.innerHTML = dayKeys.map(k => {
+      const km = byDay[k].km;
+      const diff = km - prom;
+      const diffStr = (diff>=0?'+':'')+Math.round(diff).toLocaleString('es-AR');
+      const diffColor = diff >= 0 ? 'var(--accent)' : 'var(--danger)';
+      const d = new Date(k+'T12:00:00');
+      return `<tr>
+        <td style="${monoStyle}">${d.getDate().toString().padStart(2,'0')}/${(d.getMonth()+1).toString().padStart(2,'0')}/${d.getFullYear()}</td>
+        <td style="${tdStyle}">${byDay[k].viajes}</td>
+        <td style="${monoStyle};color:var(--accent)">${km.toLocaleString('es-AR')} km</td>
+        <td style="${monoStyle};color:${diffColor}">${diffStr} km</td>
+      </tr>`;
+    }).join('') || `<tr><td colspan="4" style="${tdStyle};text-align:center;color:var(--text3)">Sin datos.</td></tr>`;
+  }
+}
+
+function exportPromedioKmPDF() {
+  const agrup = document.getElementById('promAgrup').value;
+  const filtroVeh = document.getElementById('promFiltroVeh').value;
+  const desde = document.getElementById('promDesde').value;
+  const hasta = document.getElementById('promHasta').value;
+  const regs = getRegsFiltered();
+  const dias = calcDiasRango();
+
+  const vehiculoLabel = filtroVeh ? getVehiculoNombre(filtroVeh) : 'Todos los vehículos';
+  const agrupLabel = { flota: 'Flota completa', individual: 'Por vehículo', dia: 'Por día' }[agrup] || agrup;
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+  const pw = 210; const ph = 297;
+  let y = 15;
+
+  // Header
+  doc.setFillColor(10, 10, 15);
+  doc.rect(0, 0, pw, 40, 'F');
+  doc.setTextColor(0, 255, 135);
+  doc.setFontSize(18); doc.setFont('helvetica', 'bold');
+  doc.text('FlotaControl', 14, y + 8);
+  doc.setFontSize(10); doc.setTextColor(200, 200, 200);
+  doc.text('REPORTE DE PROMEDIO KM DIARIOS', 14, y + 18);
+  doc.setFontSize(8); doc.setTextColor(140, 140, 160);
+  doc.text(`Vehículo: ${vehiculoLabel}  ·  Desde: ${desde||'—'}  ·  Hasta: ${hasta||'—'}  ·  Agrupación: ${agrupLabel}`, 14, y + 28);
+  doc.text('Generado: ' + (()=>{const d=new Date();const hh=String(d.getHours()).padStart(2,'0');const mm=String(d.getMinutes()).padStart(2,'0');return d.toLocaleDateString('es-AR')+' '+hh+':'+mm;})(), pw - 14, y + 28, { align: 'right' });
+  y = 50;
+
+  // Tarjetas resumen
+  if (agrup === 'flota') {
+    const totalKm = regs.reduce((s,r) => s + Math.max(0, r.kmRegreso - r.kmSalida), 0);
+    const prom = totalKm / dias;
+    const bloques = [
+      ['PROMEDIO KM/DÍA', (Math.round(prom*10)/10).toLocaleString('es-AR') + ' km'],
+      ['KM TOTALES', totalKm.toLocaleString('es-AR') + ' km'],
+      ['VIAJES', regs.length.toString()],
+      ['DÍAS EN PERÍODO', dias.toString()],
+    ];
+    bloques.forEach((b, i) => {
+      const cx = 14 + i * 48;
+      doc.setFillColor(25,25,38); doc.roundedRect(cx, y, 44, 22, 3, 3, 'F');
+      doc.setFontSize(7); doc.setTextColor(120,120,155); doc.setFont('helvetica','normal');
+      doc.text(b[0], cx+3, y+7);
+      doc.setFontSize(11); doc.setTextColor(0,200,100); doc.setFont('helvetica','bold');
+      doc.text(b[1], cx+3, y+17);
+    });
+    y += 30;
+  }
+
+  // Imagen del gráfico
+  const canvas = document.getElementById('chartPromedio');
+  if (canvas && promChart) {
+    try {
+      const imgData = canvas.toDataURL('image/png');
+      doc.addImage(imgData, 'PNG', 14, y, pw - 28, 65);
+      y += 71;
+    } catch(e) {}
+  }
+
+  // Tabla
+  doc.setFontSize(10); doc.setTextColor(220,220,230); doc.setFont('helvetica','bold');
+  doc.text('Detalle', 14, y); y += 5;
+  doc.setDrawColor(40,40,60); doc.line(14, y, pw-14, y); y += 3;
+
+  if (agrup === 'flota' || agrup === 'individual') {
+    const ths = agrup === 'flota'
+      ? ['Fecha','Vehículo','Conductor','KM Salida','KM Regreso','Recorridos','Destino']
+      : ['Vehículo','Patente','Viajes','KM Totales','Prom. KM/día','Días'];
+    const cws = agrup === 'flota' ? [22,38,30,20,20,20,36] : [42,28,18,30,30,28];
+    doc.setFontSize(7); doc.setTextColor(120,120,150); doc.setFont('helvetica','normal');
+    let cx2 = 14;
+    ths.forEach((h,i) => { doc.text(h, cx2, y); cx2 += cws[i]; }); y += 4;
+    doc.line(14, y, pw-14, y); y += 3;
+    doc.setTextColor(210,210,225);
+
+    if (agrup === 'flota') {
+      regs.slice().sort((a,b)=>a.fechaSalida.localeCompare(b.fechaSalida)).forEach(r => {
+        if (y > ph-18) { doc.addPage(); y = 15; }
+        const km = Math.max(0, r.kmRegreso - r.kmSalida);
+        const row = [r.fechaSalida.slice(0,10), getVehiculoNombre(r.vehiculoId).slice(0,20), getConductorNombre(r.conductorId).slice(0,16), r.kmSalida.toLocaleString(), r.kmRegreso.toLocaleString(), '+'+km.toLocaleString(), (r.destino||'—').slice(0,20)];
+        cx2 = 14; row.forEach((d,i) => { doc.text(d, cx2, y); cx2 += cws[i]; }); y += 5;
+        doc.setDrawColor(28,28,40); doc.line(14,y-2,pw-14,y-2);
+      });
+    } else {
+      const vIds = filtroVeh ? [filtroVeh] : [...new Set(regs.map(r => r.vehiculoId))];
+      vIds.forEach(id => {
+        if (y > ph-18) { doc.addPage(); y = 15; }
+        const v = getVehiculo(id);
+        const regsV = regs.filter(r => r.vehiculoId === id);
+        const km = regsV.reduce((s,r) => s + Math.max(0,r.kmRegreso-r.kmSalida), 0);
+        const prom = Math.round(km/dias*10)/10;
+        const row = [v?v.nombre.slice(0,22):id, v&&v.patente?v.patente:'—', regsV.length.toString(), km.toLocaleString()+' km', prom.toLocaleString()+' km/d', dias.toString()];
+        cx2 = 14; row.forEach((d,i) => { doc.text(d, cx2, y); cx2 += cws[i]; }); y += 5;
+        doc.setDrawColor(28,28,40); doc.line(14,y-2,pw-14,y-2);
+      });
+    }
+  } else if (agrup === 'dia') {
+    const byDay = {};
+    regs.forEach(r => {
+      const k = r.fechaSalida.slice(0,10);
+      if (!byDay[k]) byDay[k] = { km: 0, viajes: 0 };
+      byDay[k].km += Math.max(0, r.kmRegreso - r.kmSalida);
+      byDay[k].viajes++;
+    });
+    const dayKeys = Object.keys(byDay).sort();
+    const totalKm = dayKeys.reduce((s,k)=>s+byDay[k].km, 0);
+    const prom = dayKeys.length ? totalKm / dayKeys.length : 0;
+    const ths = ['Fecha','Viajes','KM del día','vs. Promedio'];
+    const cws = [40, 24, 40, 40];
+    doc.setFontSize(7); doc.setTextColor(120,120,150); doc.setFont('helvetica','normal');
+    let cx2 = 14;
+    ths.forEach((h,i) => { doc.text(h, cx2, y); cx2 += cws[i]; }); y += 4;
+    doc.line(14, y, pw-14, y); y += 3;
+    doc.setTextColor(210,210,225);
+    dayKeys.forEach(k => {
+      if (y > ph-18) { doc.addPage(); y = 15; }
+      const km = byDay[k].km;
+      const diff = km - prom;
+      const row = [k, byDay[k].viajes.toString(), km.toLocaleString()+' km', (diff>=0?'+':'')+Math.round(diff).toLocaleString()+' km'];
+      cx2 = 14; row.forEach((d,i) => { doc.text(d, cx2, y); cx2 += cws[i]; }); y += 5;
+      doc.setDrawColor(28,28,40); doc.line(14,y-2,pw-14,y-2);
+    });
+  }
+
+  if (!regs.length) {
+    doc.setTextColor(100,100,120);
+    doc.text('Sin registros para los filtros seleccionados.', 14, y);
+  }
+
+  // Footer
+  const totalPages = doc.internal.getNumberOfPages();
+  for (let i = 1; i <= totalPages; i++) {
+    doc.setPage(i);
+    doc.setFillColor(10,10,15); doc.rect(0, ph-11, pw, 11, 'F');
+    doc.setFontSize(7); doc.setTextColor(90,90,110);
+    doc.text('FlotaControl — Reporte Promedio KM Diarios', 14, ph-4);
+    doc.text('Pág. ' + i + ' / ' + totalPages, pw-14, ph-4, { align: 'right' });
+  }
+
+  const pdfBlob = doc.output('blob');
+  window.open(URL.createObjectURL(pdfBlob), '_blank');
+}
+
 function renderServiciosProximos() {
   const c = document.getElementById('serviciosProximos');
   const alerts = getAlertas().filter(a => a.tipo.startsWith('Servicio'));
